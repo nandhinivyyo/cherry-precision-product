@@ -775,41 +775,81 @@ class ForgotPasswordDialog(ctk.CTkToplevel):
         self.controller  = controller
         self.parent_page = parent
 
-        # Load small colorful cherry logo for header
-        self.cherry_header_img = None
-        try:
-            logo_path = resource_path("settings/cherry_login_logo.png")
-            if os.path.exists(logo_path):
-                pil_img = Image.open(logo_path)
-                pil_img = pil_img.resize((24, 24), Image.Resampling.LANCZOS)
-                self.cherry_header_img = ctk.CTkImage(pil_img, size=(24, 24))
-        except Exception as e:
-            print("Error loading header logo:", e)
+        # Momentary password masking setup
+        self.pw_actual_password = ""
+        self.pw_mask_char = "●"
+        self.pw_mask_job = None
+        self.pw_show_pass = False
+
+
 
         self.title("Forgot Password — Cherry Precision Service")
-        self.resizable(False, False)
         self.configure(fg_color="white")
         self.transient(parent)
         self.grab_set()
 
+        # Set window icon bitmap
+        try:
+            icon_path = resource_path("cherry_precision_transparent.ico")
+            if os.path.exists(icon_path):
+                self.after(200, lambda: self.iconbitmap(icon_path))
+        except:
+            pass
+
         # ── Outer card ───────────────────────────────────────
-        card = tk.Frame(self, bg="white")
+        card = ctk.CTkFrame(self, fg_color="white", corner_radius=0)
         card.pack(fill="both", expand=True)
 
-        # ── LEFT: contact info ───────────────────────────────
-        left = tk.Frame(card, bg="#1B5E20", width=340)
-        left.pack(side="left", fill="y")
-        left.pack_propagate(False)
+        # ── LEFT: Unified contact info & wavy separator ─────────────────
+        left_canvas = tk.Canvas(card, width=370, height=500, bg="white", highlightthickness=0)
+        left_canvas.pack(side="left", fill="y")
 
-        tk.Frame(left, bg="#4CAF50", height=5).pack(fill="x")
+        # Draw green background area with S-curve boundary on the right
+        import math
+        points = [(0, 0)]
+        for y in range(0, 505, 5):
+            x = 340 + 18 + 12 * math.cos(y * 2 * math.pi / 500)
+            points.append((x, y))
+        points.append((0, 500))
 
-        tk.Label(left, text="Need Help?",
-                 font=("Segoe UI", 18, "bold"), fg="white", bg="#1B5E20").pack(pady=(28, 4))
-        tk.Label(left, text="Cherry Precision Service Support",
-                 font=("Segoe UI", 11), fg="#A5D6A7", bg="#1B5E20").pack(pady=(0, 14))
-        tk.Frame(left, bg="#4CAF50", height=1, width=280).pack(pady=(0, 16))
+        flat_points = []
+        for pt in points:
+            flat_points.extend(pt)
 
-        body = tk.Frame(left, bg="#1B5E20")
+        left_canvas.create_polygon(flat_points, fill="#1B5E20", outline="#1B5E20")
+
+        # Draw red ribbon line
+        line_points = []
+        for y in range(0, 505, 5):
+            x = 340 + 18 + 12 * math.cos(y * 2 * math.pi / 500)
+            line_points.extend((x, y))
+        left_canvas.create_line(line_points, fill="#D32F2F", width=3, smooth=True)
+
+        # Content frame inside canvas
+        content_frame = tk.Frame(left_canvas, bg="#1B5E20")
+
+        # Lifebuoy Canvas Badge (White circle with red lifebuoy inside)
+        badge_canvas = tk.Canvas(content_frame, width=70, height=70, bg="#1B5E20", highlightthickness=0)
+        badge_canvas.pack(pady=(28, 4))
+        # White circle background
+        badge_canvas.create_oval(5, 5, 65, 65, fill="white", outline="")
+        # Red ring of lifebuoy
+        badge_canvas.create_oval(15, 15, 55, 55, outline="#C62828", width=8, fill="white")
+        # Center white donut hole
+        badge_canvas.create_oval(24, 24, 46, 46, fill="white", outline="#C62828", width=2)
+        # Four red bands
+        badge_canvas.create_rectangle(32, 15, 38, 25, fill="#C62828", outline="")
+        badge_canvas.create_rectangle(32, 45, 38, 55, fill="#C62828", outline="")
+        badge_canvas.create_rectangle(15, 32, 25, 38, fill="#C62828", outline="")
+        badge_canvas.create_rectangle(45, 32, 55, 38, fill="#C62828", outline="")
+
+        ctk.CTkLabel(content_frame, text="Need Help?",
+                     font=("Segoe UI", 18, "bold"), text_color="white", fg_color="transparent").pack(pady=(4, 4))
+        ctk.CTkLabel(content_frame, text="Cherry Precision Service Support",
+                     font=("Segoe UI", 11), text_color="#A5D6A7", fg_color="transparent").pack(pady=(0, 14))
+        ctk.CTkFrame(content_frame, fg_color="#4CAF50", height=1, width=280, corner_radius=0).pack(pady=(0, 16))
+
+        body = ctk.CTkFrame(content_frame, fg_color="transparent")
         body.pack(fill="x", padx=22)
 
         intro = ("If you have forgotten your admin password,\n"
@@ -817,81 +857,167 @@ class ForgotPasswordDialog(ctk.CTkToplevel):
                  "service representative. They will provide\n"
                  "you with a Cherry Service ID & Password\n"
                  "to reset your admin credentials.")
-        tk.Label(body, text=intro, font=("Segoe UI", 11),
-                 fg="#C8E6C9", bg="#1B5E20", justify="left",
-                 wraplength=290).pack(anchor="w", pady=(0, 18))
+        ctk.CTkLabel(body, text=intro, font=("Segoe UI", 11),
+                     text_color="#C8E6C9", fg_color="transparent", justify="left",
+                     wraplength=280).pack(anchor="w", pady=(0, 18))
 
         # Contacts list
         contacts = [
-            ("📞  Helpline :",  "+91-98765-43210"),
-            ("📧  Email :",     "service@cherryprecision.com"),
-            ("🕐  Hours :",     "Mon–Sat  |  9:00 AM – 6:00 PM"),
-            ("🏢  Service :",   "Cherry Precision Products"),
+            ("📞", "+91-98765-43210"),
+            ("✉️", "service@cherryprecision.com"),
+            ("🕒", "Mon-Sat | 9:00 AM - 6:00 PM"),
+            ("🏢", "Cherry Precision Products"),
         ]
-        for label, value in contacts:
-            row = tk.Frame(body, bg="#1B5E20")
-            row.pack(fill="x", pady=3)
-            tk.Label(row, text=label, font=("Segoe UI", 11, "bold"),
-                     fg="#81C784", bg="#1B5E20", width=13, anchor="w").pack(side="left")
-            tk.Label(row, text=value, font=("Segoe UI", 11),
-                     fg="white", bg="#1B5E20", anchor="w").pack(side="left")
+        for icon, value in contacts:
+            row = ctk.CTkFrame(body, fg_color="transparent")
+            row.pack(fill="x", pady=5)
+            ctk.CTkLabel(row, text=icon, font=("Segoe UI", 14),
+                         text_color="#A5D6A7", fg_color="transparent", width=30, anchor="w").pack(side="left")
+            ctk.CTkLabel(row, text=value, font=("Segoe UI", 11),
+                         text_color="white", fg_color="transparent", anchor="w").pack(side="left")
 
-        tk.Label(left, text="Please have your machine serial\nnumber ready when you call.",
-                 font=("Segoe UI", 11, "italic"), fg="#A5D6A7",
-                 bg="#1B5E20", justify="center").pack(side="bottom", pady=20)
+        # Place Content Frame on Canvas
+        left_canvas.create_window(170, 250, window=content_frame, anchor="center")
 
         # ── RIGHT: credentials entry ─────────────────────────
-        right = tk.Frame(card, bg="white")
+        right = ctk.CTkFrame(card, fg_color="white", corner_radius=0)
         right.pack(side="right", fill="both", expand=True)
 
-        # Use pack with padding to center content vertically and horizontally
-        right_inner_wrap = tk.Frame(right, bg="white")
-        right_inner_wrap.pack(fill="both", expand=True)
+        # Top Header Bar
+        header_bar = ctk.CTkFrame(right, fg_color="white", height=45, corner_radius=0)
+        header_bar.pack(fill="x", side="top")
+        
+        # Header Label (no logo)
+        hdr_title = ctk.CTkLabel(header_bar, text="Forgot Password — Cherry Precision Service",
+                                  font=("Segoe UI", 11, "bold"), text_color="#333", fg_color="transparent")
+        hdr_title.pack(side="left", padx=25, pady=8)
+            
+        border_line = ctk.CTkFrame(right, fg_color="#E0E0E0", height=1, corner_radius=0)
+        border_line.pack(fill="x")
 
-        inner = tk.Frame(right_inner_wrap, bg="white")
-        inner.pack(expand=True, padx=32, pady=30)
+        # Form container
+        inner = ctk.CTkFrame(right, fg_color="white", corner_radius=0)
+        inner.pack(expand=True, padx=40, pady=(10, 20))
 
-        tk.Label(inner, text="Enter Cherry Service Credentials",
-                 font=("Segoe UI", 18, "bold"), fg="#1B5E20", bg="white").pack(pady=(0, 6))
-        tk.Label(inner,
-                 text="Use the Cherry Service ID & Password\nprovided by your service representative.",
-                 font=("Segoe UI", 11), fg="#757575", bg="white",
-                 justify="center").pack(pady=(0, 22))
+        # Title: Enter Cherry Service Credentials
+        title_frame = ctk.CTkFrame(inner, fg_color="transparent")
+        title_frame.pack(pady=(0, 2))
+        ctk.CTkLabel(title_frame, text="Enter ", font=("Segoe UI", 18, "bold"), text_color="#1B5E20").pack(side="left")
+        ctk.CTkLabel(title_frame, text="Cherry ", font=("Segoe UI", 18, "bold"), text_color="#C62828").pack(side="left")
+        ctk.CTkLabel(title_frame, text="Service Credentials", font=("Segoe UI", 18, "bold"), text_color="#1B5E20").pack(side="left")
 
-        tk.Label(inner, text="Cherry Service ID", font=("Segoe UI", 11, "bold"),
-                 fg="#333", bg="white", anchor="w").pack(fill="x")
-        self.id_entry = ctk.CTkEntry(inner, placeholder_text="Enter Cherry Service ID",
-                                     height=44, width=320, font=("Segoe UI", 13),
-                                     border_color="#B0BEC5", corner_radius=8)
-        self.id_entry.pack(pady=(4, 12))
+        ctk.CTkLabel(inner,
+                     text="Use the Cherry Service ID & Password\nprovided by your service representative.",
+                     font=("Segoe UI", 11), text_color="#757575", fg_color="transparent",
+                     justify="center").pack(pady=(0, 22))
+
+        # ID Field
+        ctk.CTkLabel(inner, text="Cherry Service ID", font=("Segoe UI", 11, "bold"),
+                     text_color="#333", fg_color="transparent", anchor="w").pack(fill="x")
+                     
+        id_container = ctk.CTkFrame(inner, fg_color="white", border_color="#B0BEC5", border_width=1, corner_radius=8, height=44, width=320)
+        id_container.pack(pady=(4, 12))
+        id_container.pack_propagate(False)
+
+        id_icon = ctk.CTkLabel(id_container, text="👤", font=("Segoe UI", 16), text_color="#757575", fg_color="transparent")
+        id_icon.pack(side="left", padx=(12, 5))
+
+        self.id_entry = tk.Entry(id_container, relief="flat", bd=0, bg="white", fg="#333",
+                                 selectbackground="#1B5E20", selectforeground="white",
+                                 font=("Segoe UI", 13), insertbackground="#333")
+        self.id_entry.pack(side="left", fill="x", expand=True, padx=(2, 12), pady=10)
         self.id_entry.focus()
 
-        tk.Label(inner, text="Cherry Service Password", font=("Segoe UI", 11, "bold"),
-                 fg="#333", bg="white", anchor="w").pack(fill="x")
-        self.pw_entry = ctk.CTkEntry(inner, placeholder_text="Enter service password",
-                                     show="●", height=44, width=320,
-                                     font=("Segoe UI", 13),
-                                     border_color="#B0BEC5", corner_radius=8)
-        self.pw_entry.pack(pady=(4, 12))
+        id_placeholder = ctk.CTkLabel(id_container, text="Enter service ID", font=("Segoe UI", 13), text_color="#9E9E9E", fg_color="transparent")
+        id_placeholder.place(x=40, y=22, anchor="w")
+        id_placeholder.bind("<Button-1>", lambda e: self.id_entry.focus())
+
+        def on_id_key(event=None):
+            self.after(10, check_id_placeholder)
+
+        def check_id_placeholder():
+            if self.id_entry.get():
+                id_placeholder.place_forget()
+            else:
+                id_placeholder.place(x=40, y=22, anchor="w")
+
+        self.id_entry.bind("<KeyRelease>", on_id_key)
+
+        # PW Field
+        ctk.CTkLabel(inner, text="Cherry Service Password", font=("Segoe UI", 11, "bold"),
+                     text_color="#333", fg_color="transparent", anchor="w").pack(fill="x")
+                     
+        pw_container = ctk.CTkFrame(inner, fg_color="white", border_color="#B0BEC5", border_width=1, corner_radius=8, height=44, width=320)
+        pw_container.pack(pady=(4, 12))
+        pw_container.pack_propagate(False)
+
+        pw_icon = ctk.CTkLabel(pw_container, text="🔒", font=("Segoe UI", 16), text_color="#757575", fg_color="transparent")
+        pw_icon.pack(side="left", padx=(12, 5))
+
+        self.pw_entry = tk.Entry(pw_container, relief="flat", bd=0, bg="white", fg="#333",
+                                 selectbackground="#1B5E20", selectforeground="white",
+                                 font=("Segoe UI", 13), insertbackground="#333")
+        self.pw_entry.pack(side="left", fill="x", expand=True, padx=(2, 5), pady=10)
+
+        pw_placeholder = ctk.CTkLabel(pw_container, text="Enter service password", font=("Segoe UI", 13), text_color="#9E9E9E", fg_color="transparent")
+        pw_placeholder.place(x=40, y=22, anchor="w")
+        pw_placeholder.bind("<Button-1>", lambda e: self.pw_entry.focus())
+
+        def on_pw_key(event=None):
+            self.after(10, check_pw_placeholder)
+
+        def check_pw_placeholder():
+            if self.pw_entry.get():
+                pw_placeholder.place_forget()
+            else:
+                pw_placeholder.place(x=40, y=22, anchor="w")
+
+        # Hook validation for password masking
+        pw_vcmd = (self.register(self._validate_forgot_pw_input), '%d', '%i', '%P', '%s', '%S')
+        self.pw_entry.config(validate="key", validatecommand=pw_vcmd)
+        self.pw_entry.bind("<KeyRelease>", on_pw_key)
+
+        # Show/Hide eye button
+        def toggle_pw_visibility():
+            self.pw_show_pass = not self.pw_show_pass
+            if self.pw_show_pass:
+                self._set_forgot_pw_display_text(self.pw_actual_password)
+                eye_btn.configure(text="👁")
+            else:
+                self._set_forgot_pw_display_text(self.pw_mask_char * len(self.pw_actual_password))
+                eye_btn.configure(text="👁‍🗨")
+
+        eye_btn = ctk.CTkLabel(pw_container, text="👁‍🗨", font=("Segoe UI", 16), text_color="#757575", fg_color="transparent", cursor="hand2")
+        eye_btn.pack(side="right", padx=(5, 12))
+        eye_btn.bind("<Button-1>", lambda e: toggle_pw_visibility())
+
+        # Focus ring bindings
+        self.id_entry.bind("<FocusIn>", lambda e: [id_container.configure(border_color="#1B5E20"), id_placeholder.place_forget()])
+        self.id_entry.bind("<FocusOut>", lambda e: [id_container.configure(border_color="#B0BEC5"), check_id_placeholder()])
+        
+        self.pw_entry.bind("<FocusIn>", lambda e: [pw_container.configure(border_color="#1B5E20"), pw_placeholder.place_forget()])
+        self.pw_entry.bind("<FocusOut>", lambda e: [pw_container.configure(border_color="#B0BEC5"), check_pw_placeholder()])
 
         self.id_entry.bind("<Return>", lambda event: self.pw_entry.focus())
         self.pw_entry.bind("<Return>", lambda event: self.on_verify())
 
-        self.err_lbl = tk.Label(inner, text="", font=("Segoe UI", 11),
-                                fg="#C62828", bg="white", wraplength=320, justify="center")
+        self.err_lbl = ctk.CTkLabel(inner, text="", font=("Segoe UI", 11),
+                                    text_color="#C62828", fg_color="transparent", wraplength=320, justify="center")
         self.err_lbl.pack(pady=(0, 8))
 
-        ModernButton(inner, text="VERIFY & RESET PASSWORD",
+        # Solid red verify button
+        ModernButton(inner, text="🛡️  VERIFY & RESET PASSWORD",
                       font=("Segoe UI", 13, "bold"),
                       height=46, width=320,
-                      fg_color="#2E7D32", hover_color="#1B5E20",
+                      fg_color="#B71C1C", hover_color="#990000",
                       corner_radius=8,
                       command=self.on_verify).pack(pady=4)
 
+        # Green outlined cancel button
         ModernButton(inner, text="Cancel",
                       font=("Segoe UI", 11), height=36, width=320,
                       fg_color="transparent", hover_color="#E8F5E9",
-                      text_color="#555", border_width=1, border_color="#BDBDBD",
+                      text_color="#1B5E20", border_width=1, border_color="#1B5E20",
                       corner_radius=8,
                       command=self.destroy).pack(pady=(6, 0))
 
@@ -900,6 +1026,8 @@ class ForgotPasswordDialog(ctk.CTkToplevel):
         x = (self.winfo_screenwidth()  - W) // 2
         y = (self.winfo_screenheight() - H) // 2
         self.geometry(f"{W}x{H}+{x}+{y}")
+        self.update_idletasks()
+        self.resizable(False, False)
 
     def _validate_forgot_pw_input(self, action, index, value_if_allowed, prior_value, text_inserted_deleted):
         idx = int(index)
@@ -972,7 +1100,7 @@ class ForgotPasswordDialog(ctk.CTkToplevel):
 # ─────────────────────────────────────────────────────────────────────────────
 #  Reset Password Dialog
 # ─────────────────────────────────────────────────────────────────────────────
-class ResetPasswordDialog(tk.Toplevel):
+class ResetPasswordDialog(ctk.CTkToplevel):
     """
     Allows setting a new Admin Username + Password after presenting
     a valid Cherry Service ID. Increments the Cherry ID use-count on save.
@@ -983,32 +1111,39 @@ class ResetPasswordDialog(tk.Toplevel):
         self.cherry_id  = cherry_id
 
         self.title("Reset Admin Password — Cherry Precision")
-        self.resizable(False, False)
-        self.configure(bg="white")
+        self.configure(fg_color="white")
         self.transient(parent)
         self.grab_set()
 
-        card = tk.Frame(self, bg="white")
+        # Set window icon bitmap
+        try:
+            icon_path = resource_path("cherry_precision_transparent.ico")
+            if os.path.exists(icon_path):
+                self.after(200, lambda: self.iconbitmap(icon_path))
+        except:
+            pass
+
+        card = ctk.CTkFrame(self, fg_color="white", corner_radius=0)
         card.pack(fill="both", expand=True, padx=44, pady=30)
 
-        tk.Label(card, text="Set New Admin Credentials",
-                 font=("Segoe UI", 18, "bold"), fg="#1B5E20", bg="white").pack(pady=(0, 6))
-        tk.Label(card,
-                 text="Set a new admin username and a strong password.\n"
-                      "Your previous credentials will be deactivated after saving.",
-                 font=("Segoe UI", 11), fg="#555", bg="white",
-                 justify="center").pack(pady=(0, 20))
+        ctk.CTkLabel(card, text="Set New Admin Credentials",
+                     font=("Segoe UI", 18, "bold"), text_color="#1B5E20", fg_color="transparent").pack(pady=(0, 6))
+        ctk.CTkLabel(card,
+                     text="Set a new admin username and a strong password.\n"
+                          "Your previous credentials will be deactivated after saving.",
+                     font=("Segoe UI", 11), text_color="#555", fg_color="transparent",
+                     justify="center").pack(pady=(0, 20))
 
-        tk.Label(card, text="New Admin Username", font=("Segoe UI", 11, "bold"),
-                 fg="#333", bg="white", anchor="w").pack(fill="x")
+        ctk.CTkLabel(card, text="New Admin Username", font=("Segoe UI", 11, "bold"),
+                     text_color="#333", fg_color="transparent", anchor="w").pack(fill="x")
         self.name_ent = ctk.CTkEntry(card, placeholder_text="Enter new admin username",
                                      height=44, width=360, font=("Segoe UI", 13),
                                      border_color="#B0BEC5", corner_radius=8)
         self.name_ent.pack(pady=(4, 10))
         self.name_ent.focus()
 
-        tk.Label(card, text="New Password", font=("Segoe UI", 11, "bold"),
-                 fg="#333", bg="white", anchor="w").pack(fill="x")
+        ctk.CTkLabel(card, text="New Password", font=("Segoe UI", 11, "bold"),
+                     text_color="#333", fg_color="transparent", anchor="w").pack(fill="x")
         self.pass_ent = ctk.CTkEntry(card, placeholder_text="Enter new password",
                                      show="●", height=44, width=360,
                                      font=("Segoe UI", 13),
@@ -1016,8 +1151,8 @@ class ResetPasswordDialog(tk.Toplevel):
         self.pass_ent.pack(pady=(4, 10))
         self.pass_ent.bind("<KeyRelease>", self._validate)
 
-        tk.Label(card, text="Confirm Password", font=("Segoe UI", 11, "bold"),
-                 fg="#333", bg="white", anchor="w").pack(fill="x")
+        ctk.CTkLabel(card, text="Confirm Password", font=("Segoe UI", 11, "bold"),
+                     text_color="#333", fg_color="transparent", anchor="w").pack(fill="x")
         self.conf_ent = ctk.CTkEntry(card, placeholder_text="Re-enter new password",
                                      show="●", height=44, width=360,
                                      font=("Segoe UI", 13),
@@ -1030,7 +1165,7 @@ class ResetPasswordDialog(tk.Toplevel):
         self.conf_ent.bind("<Return>", lambda event: self.save_btn.invoke() if self.save_btn.cget('state') == 'normal' else None)
 
         # Password rules checklist
-        rules_frame = tk.Frame(card, bg="white")
+        rules_frame = ctk.CTkFrame(card, fg_color="white", corner_radius=0)
         rules_frame.pack(fill="x", pady=(0, 8))
         self._rule_labels = {}
         for key, text in [("upper",   "One uppercase letter"),
@@ -1038,13 +1173,13 @@ class ResetPasswordDialog(tk.Toplevel):
                           ("number",  "One number"),
                           ("special", "One special character"),
                           ("match",   "Passwords match")]:
-            lbl = tk.Label(rules_frame, text=f"❌  {text}",
-                           font=("Segoe UI", 11), fg="#757575", bg="white", anchor="w")
+            lbl = ctk.CTkLabel(rules_frame, text=f"❌  {text}",
+                               font=("Segoe UI", 11), text_color="#757575", fg_color="transparent", anchor="w")
             lbl.pack(fill="x")
             self._rule_labels[key] = lbl
 
-        self.err_lbl = tk.Label(card, text="", font=("Segoe UI", 11),
-                                fg="#C62828", bg="white")
+        self.err_lbl = ctk.CTkLabel(card, text="", font=("Segoe UI", 11),
+                                    text_color="#C62828", fg_color="transparent")
         self.err_lbl.pack(pady=(0, 6))
 
         self.save_btn = ModernButton(card, text="SAVE NEW CREDENTIALS",
@@ -1069,6 +1204,8 @@ class ResetPasswordDialog(tk.Toplevel):
         x = (self.winfo_screenwidth()  - W) // 2
         y = (self.winfo_screenheight() - H) // 2
         self.geometry(f"{W}x{H}+{x}+{y}")
+        self.update_idletasks()
+        self.resizable(False, False)
 
 
     def _validate(self, event=None):
@@ -1083,9 +1220,9 @@ class ResetPasswordDialog(tk.Toplevel):
             ("match",   (pw == conf) and len(pw) > 0,          "Passwords match"),
         ]
         for key, ok, text in checks:
-            self._rule_labels[key].config(
+            self._rule_labels[key].configure(
                 text=f"{'✅' if ok else '❌'}  {text}",
-                fg="#2E7D32" if ok else "#757575"
+                text_color="#2E7D32" if ok else "#757575"
             )
         self.save_btn.configure(state="normal" if all(ok for _, ok, _ in checks) else "disabled")
 
@@ -1094,7 +1231,7 @@ class ResetPasswordDialog(tk.Toplevel):
         new_pass = self.pass_ent.get().strip()
 
         if not new_name:
-            self.err_lbl.config(text="Admin username cannot be empty.")
+            self.err_lbl.configure(text="Admin username cannot be empty.")
             return
         try:
             company = SetupDatabase.get_company_name()
@@ -1116,7 +1253,7 @@ class ResetPasswordDialog(tk.Toplevel):
             )
             self.destroy()
         except Exception as e:
-            self.err_lbl.config(text=f"Error saving credentials: {e}")
+            self.err_lbl.configure(text=f"Error saving credentials: {e}")
 
 
 class SetupDatabase:
@@ -10110,27 +10247,53 @@ class LiveDataPage(ctk.CTkFrame):
         # === Modern Header Card ===
         header_card = ctk.CTkFrame(
             self,
+            fg_color="white",
             corner_radius=15,
             border_width=1,
-            border_color="#E3F2FD"
+            border_color="#E0E0E0"
         )
         header_card.pack(fill="x", padx=20, pady=(15, 10))
         
+        # Red vertical accent bar on the left edge of the card
+        red_bar = ctk.CTkFrame(header_card, fg_color="#D32F2F", width=6, corner_radius=0)
+        red_bar.place(x=0, y=0, relheight=1)
+        
         # Header content
         header_content = ctk.CTkFrame(header_card, fg_color="transparent")
-        header_content.pack(fill="x", padx=20, pady=15)
+        header_content.pack(fill="x", padx=(25, 20), pady=15)
         
         # Title with icon
-
         title_frame = ctk.CTkFrame(header_content, fg_color="transparent")
         title_frame.pack(side="left")
         
+        # Rounded red square for logo
+        logo_frame = ctk.CTkFrame(title_frame, fg_color="#D32F2F", width=40, height=40, corner_radius=8)
+        logo_frame.pack(side="left", padx=(0, 12))
+        logo_frame.pack_propagate(False)
+        
+        # White cherry emoji inside logo
+        logo_lbl = ctk.CTkLabel(logo_frame, text="🍒", font=("Segoe UI", 18), text_color="white", fg_color="transparent")
+        logo_lbl.pack(expand=True)
+        
+        # Text container for title + subtitle
+        text_frame = ctk.CTkFrame(title_frame, fg_color="transparent")
+        text_frame.pack(side="left")
+        
         ctk.CTkLabel(
-            title_frame,
-            text="📊 Live Data Monitoring",
+            text_frame,
+            text="Live Data Monitoring",
             font=("Segoe UI", 18, "bold"),
-            text_color="#1976D2"
-        ).pack(side="left")
+            text_color="#1A1A1A",
+            fg_color="transparent"
+        ).pack(anchor="w")
+        
+        ctk.CTkLabel(
+            text_frame,
+            text="Real-time AirGauge data and system status",
+            font=("Segoe UI", 11),
+            text_color="#757575",
+            fg_color="transparent"
+        ).pack(anchor="w")
         
         # Status badge
         status_badge = ctk.CTkFrame(
@@ -10146,6 +10309,15 @@ class LiveDataPage(ctk.CTkFrame):
             font=("Segoe UI", 11, "bold"),
             text_color="#43A047"
         ).pack(padx=15, pady=6)
+
+        # Create custom headers row above table_frame
+        self.header_row_frame = ctk.CTkFrame(self, fg_color="white", height=42, corner_radius=0)
+        self.header_row_frame.pack(fill="x", padx=20, pady=(0, 0))
+        self.header_row_frame.pack_propagate(False)
+        
+        # Red border line under headers
+        self.border_line = ctk.CTkFrame(self, fg_color="#D32F2F", height=2, corner_radius=0)
+        self.border_line.pack(fill="x", padx=20, pady=(0, 10))
 
         # === Modern Table Container ===
         self.table_frame = ctk.CTkFrame(
@@ -10170,7 +10342,7 @@ class LiveDataPage(ctk.CTkFrame):
             "Component ID",  
             "Item",
             "CNC ID",
-            "Customer"   # ✅ NEW LAST COLUMN
+            "Customer"
         ]
 
         self.create_table(cols)
@@ -10226,6 +10398,63 @@ class LiveDataPage(ctk.CTkFrame):
             try: w.destroy()
             except: pass
 
+        # Emojis and column display names
+        header_info = [
+            ("Date", "📅"),
+            ("Time", "🕐"),
+            ("Reading", "📊"),
+            ("Offset", "🎯"),
+            ("Status", "ℹ️"),
+            ("AirGauge ID", "🏷️"),
+            ("Channel", "📶"),
+            ("Drawing", "📄"),
+            ("User ID", "👤"),
+            ("Component ID", "📦"),
+            ("Item", "📋"),
+            ("CNC ID", "💻"),
+            ("Customer", "🏢")
+        ]
+
+        # Clear custom header frame children
+        for child in self.header_row_frame.winfo_children():
+            try: child.destroy()
+            except: pass
+
+        self.header_widgets = []
+        
+        # Create custom header cells packed horizontally
+        for name, emoji in header_info:
+            cell = ctk.CTkFrame(
+                self.header_row_frame,
+                fg_color="white",
+                corner_radius=0,
+                height=42,
+                border_width=1,
+                border_color="#E0E0E0"
+            )
+            cell.pack(side="left", fill="y")
+            cell.pack_propagate(False)
+            
+            lbl = ctk.CTkLabel(
+                cell,
+                text=f"{emoji} {name}",
+                font=("Segoe UI", 11, "bold"),
+                text_color="#1A1A1A",
+                anchor="center"
+            )
+            lbl.pack(fill="both", expand=True, padx=5)
+            self.header_widgets.append(cell)
+
+        # Right-side spacer to account for the vertical scrollbar width
+        self.header_scrollbar_spacer = ctk.CTkFrame(
+            self.header_row_frame,
+            fg_color="white",
+            corner_radius=0,
+            width=16,
+            height=42
+        )
+        self.header_scrollbar_spacer.pack(side="right", fill="y")
+
         self.use_tksheet = False
         try:
             # Try creating tksheet
@@ -10233,70 +10462,83 @@ class LiveDataPage(ctk.CTkFrame):
                 self.table_frame,
                 headers=cols,
                 data=[],
+                show_header=False,
+                show_row_index=False,
                 show_x_scrollbar=True,
-                show_y_scrollbar=True
+                show_y_scrollbar=True,
+                font=("Segoe UI", 11, "normal"),
+                row_height=28
             )
             self.sheet.grid(row=0, column=0, sticky="nsew")
             # Grid config
             self.table_frame.grid_rowconfigure(0, weight=1)
             self.table_frame.grid_columnconfigure(0, weight=1)
 
-            # Basic column width heuristic (S.No narrow, others wider)
+            # Column width ratio-based resizer
             def resize_sheet(ev=None):
                 try:
-                    total = max(480, self.table_frame.winfo_width() or 800)
-                    # assign widths proportionally
-                    widths = []
-                    for i, c in enumerate(cols):
-                        if c == "S.No":
-                            widths.append(60)
-                        elif c in ("Date", "Time"):
-                            widths.append(110)
-                        elif c in ("AirGauge ID", "Channel", "CNC ID"):
-                            widths.append(100)
-                        else:
-                            widths.append(max(120, int((total - 400) / (len(cols) - 1))))
+                    total_w = self.table_frame.winfo_width()
+                    if total_w < 100:
+                        total_w = 800
+                    
+                    # Deduct spacing for the vertical scrollbar
+                    usable_w = total_w - 18
+                    
+                    ratios = [0.08, 0.08, 0.08, 0.06, 0.07, 0.08, 0.07, 0.08, 0.07, 0.09, 0.09, 0.07, 0.10]
+                    widths = [int(r * usable_w) for r in ratios]
+                    # Adjust last column to match exactly
+                    widths[-1] += usable_w - sum(widths)
+                    
+                    # Apply widths to tksheet
                     for idx, w in enumerate(widths):
                         try:
-                            # prefer new API
                             self.sheet.column_width(column=idx, width=w, only_set_if_too_small=False)
                         except TypeError:
-                            # fallback older API
                             self.sheet.column_width(idx, w)
+                    
                     try:
-                        # refresh view
                         self.sheet.refresh()
                     except Exception:
                         pass
-                except Exception:
-                    pass
+
+                    # Sync header cells widths
+                    for idx, w in enumerate(widths):
+                        if idx < len(self.header_widgets):
+                            self.header_widgets[idx].configure(width=w)
+                except Exception as e:
+                    print("Resize sheet error:", e)
 
             self.resize_sheet = resize_sheet
             self.table_frame.bind("<Configure>", self.resize_sheet)
-            # Enable useful bindings (single select + row select)
+            
+            # Enable bindings
             try:
                 self.sheet.enable_bindings(("single_select", "row_select", "rc_select"))
             except Exception:
                 pass
 
             self.use_tksheet = True
-            # prepare color map storage (tksheet uses explicit highlight_rows)
             self._sheet_row_count = 0
 
         except Exception as e:
-            # fallback to Treeview (keeps previous behavior)
+            # fallback to Treeview (keeps previous behavior but hides heading)
             self.use_tksheet = False
             style = ttk.Style()
             style.configure("LiveData.Treeview", font=("Segoe UI", 11), rowheight=28)
-            style.configure("LiveData.Treeview.Heading", font=("Segoe UI", 11, "bold"))
+            # Hide the headings by configuring minimal size
+            style.configure("LiveData.Treeview.Heading", font=("Segoe UI", 1), rowheight=1)
             style.map("LiveData.Treeview", background=[("selected", "#BBDEFB")])
 
-            self.table = ttk.Treeview(self.table_frame, columns=cols, show="headings", height=12,
-                                      style="LiveData.Treeview")
+            self.table = ttk.Treeview(
+                self.table_frame, 
+                columns=cols, 
+                show="headings", 
+                height=12,
+                style="LiveData.Treeview"
+            )
             for c in cols:
-                w = 60 if c == "S.No" else 145
-                self.table.heading(c, text=c)
-                self.table.column(c, width=w, anchor="center")
+                self.table.heading(c, text="") # Empty header text
+                self.table.column(c, width=100, anchor="center")
 
             y_scroll = ttk.Scrollbar(self.table_frame, orient="vertical", command=self.table.yview)
             x_scroll = ttk.Scrollbar(self.table_frame, orient="horizontal", command=self.table.xview)
@@ -10307,6 +10549,32 @@ class LiveDataPage(ctk.CTkFrame):
 
             self.table_frame.grid_rowconfigure(1, weight=1)
             self.table_frame.grid_columnconfigure(0, weight=1)
+
+            # Column width ratio-based resizer for fallback Treeview
+            def resize_tree(ev=None):
+                try:
+                    total_w = self.table_frame.winfo_width()
+                    if total_w < 100:
+                        total_w = 800
+                    
+                    usable_w = total_w - 18
+                    ratios = [0.08, 0.08, 0.08, 0.06, 0.07, 0.08, 0.07, 0.08, 0.07, 0.09, 0.09, 0.07, 0.10]
+                    widths = [int(r * usable_w) for r in ratios]
+                    widths[-1] += usable_w - sum(widths)
+                    
+                    for idx, w in enumerate(widths):
+                        col_name = cols[idx]
+                        self.table.column(col_name, width=w, anchor="center")
+                    
+                    # Sync header cells widths
+                    for idx, w in enumerate(widths):
+                        if idx < len(self.header_widgets):
+                            self.header_widgets[idx].configure(width=w)
+                except Exception as e:
+                    print("Resize tree error:", e)
+
+            self.resize_sheet = resize_tree
+            self.table_frame.bind("<Configure>", self.resize_sheet)
 
             # preserve tags for compatibility
             self.table.tag_configure("evenrow", background="#f9fff4")
@@ -10518,8 +10786,8 @@ class LiveDataPage(ctk.CTkFrame):
             customer_name = self.get_customer_name(airgauge_id, ch)
 
             values = [
-                f"{hh}:{mm}:{ss}",
                 date,
+                f"{hh}:{mm}:{ss}",
                 Reading,
                 offset,
                 status,

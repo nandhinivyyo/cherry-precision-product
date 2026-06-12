@@ -9413,7 +9413,9 @@ class UsbDataPage(ctk.CTkFrame):
                 headers=cols,
                 data=[],
                 show_x_scrollbar=True,
-                show_y_scrollbar=True
+                show_y_scrollbar=True,
+                show_row_index=False,
+                show_top_left=False
             )
             self.sheet.grid(row=0, column=0, sticky="nsew")
             self.table_frame.grid_rowconfigure(0, weight=1)

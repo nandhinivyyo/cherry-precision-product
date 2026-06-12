@@ -27,9 +27,89 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
+
 # ---------------- Table / Sheet ----------------
 import tksheet
 import tempfile
+
+from ui_animations import Easing, AnimationHelper, HoverAnimation
+
+class ModernCardFrame(ctk.CTkFrame):
+    """
+    Premium card container frame matching UI/UX specifications.
+    Features corner_radius=12, fg_color="#FAFAFA", border_width=1, border_color="#E0E0E0".
+    """
+    def __init__(self, parent, **kwargs):
+        # Override default CustomTkinter styles with design token values
+        kwargs["corner_radius"] = kwargs.get("corner_radius", 12)
+        kwargs["fg_color"] = kwargs.get("fg_color", "#FAFAFA")
+        kwargs["border_width"] = kwargs.get("border_width", 1)
+        kwargs["border_color"] = kwargs.get("border_color", "#E0E0E0")
+        super().__init__(parent, **kwargs)
+
+class ModernButton(ctk.CTkButton):
+    def __init__(self, parent, **kwargs):
+        # Standardize font to Segoe UI
+        if "font" not in kwargs:
+            kwargs["font"] = ("Segoe UI", 11, "normal")
+        else:
+            font_val = kwargs["font"]
+            if isinstance(font_val, tuple) and len(font_val) >= 2:
+                kwargs["font"] = ("Segoe UI", font_val[1], font_val[2] if len(font_val) > 2 else "normal")
+                
+        super().__init__(parent, **kwargs)
+        
+        # Resolve normal_color and hover_color
+        normal_color = self.cget("fg_color")
+        hover_color = self.cget("hover_color")
+        
+        if isinstance(normal_color, (list, tuple)):
+            normal_color = normal_color[0]
+        if isinstance(hover_color, (list, tuple)):
+            hover_color = hover_color[0]
+            
+        if (isinstance(normal_color, str) and normal_color.startswith("#") and 
+            isinstance(hover_color, str) and hover_color.startswith("#")):
+            try:
+                self.hover_anim = HoverAnimation(self, hover_color, normal_color, duration=150)
+            except Exception as e:
+                pass
+
+    def configure(self, **kwargs):
+        super().configure(**kwargs)
+        if "fg_color" in kwargs or "hover_color" in kwargs:
+            normal_color = self.cget("fg_color")
+            hover_color = self.cget("hover_color")
+            if isinstance(normal_color, (list, tuple)): normal_color = normal_color[0]
+            if isinstance(hover_color, (list, tuple)): hover_color = hover_color[0]
+            if hasattr(self, "hover_anim") and self.hover_anim:
+                if isinstance(normal_color, str) and normal_color.startswith("#"):
+                    self.hover_anim.normal_color = normal_color
+                if isinstance(hover_color, str) and hover_color.startswith("#"):
+                    self.hover_anim.hover_color = hover_color
+
+def make_sheet_auto_resize(sheet_obj, frame_obj, cols):
+    """Binds configure event of frame_obj to resize columns of sheet_obj to fit 100%."""
+    def do_resize(event=None):
+        w = frame_obj.winfo_width()
+        if w > 100:
+            cols_count = len(cols)
+            avg_w = (w - 20) // cols_count if cols_count > 0 else 100
+            for i in range(cols_count):
+                try:
+                    sheet_obj.column_width(column=i, width=avg_w, only_set_if_too_small=False)
+                except:
+                    try: sheet_obj.column_width(i, avg_w)
+                    except: pass
+            try: sheet_obj.refresh()
+            except:
+                try: sheet_obj.redraw()
+                except: pass
+    frame_obj.bind("<Configure>", do_resize)
+    # Trigger initial size
+    frame_obj.after(100, do_resize)
+    return do_resize
+
 
 
 
@@ -269,13 +349,13 @@ class InstallerLoginPage(ctk.CTkFrame):
         
         # Branding Text
         ctk.CTkLabel(self.left_panel, text="Cherry Protocol", 
-                     font=("Segoe UI", 32, "bold"), text_color="white").place(relx=0.5, rely=0.3, anchor="center")
+                     font=("Segoe UI", 24, "bold"), text_color="white").place(relx=0.5, rely=0.3, anchor="center")
         
         ctk.CTkLabel(self.left_panel, text="Precision Air Gauge System", 
-                     font=("Segoe UI", 16), text_color="#E3F2FD").place(relx=0.5, rely=0.38, anchor="center")
+                     font=("Segoe UI", 18, "bold"), text_color="#E3F2FD").place(relx=0.5, rely=0.38, anchor="center")
         
         ctk.CTkLabel(self.left_panel, text="Installer Access", 
-                     font=("Segoe UI", 14, "bold"), text_color="#BBDEFB").place(relx=0.5, rely=0.9, anchor="center")
+                     font=("Segoe UI", 13, "bold"), text_color="#BBDEFB").place(relx=0.5, rely=0.9, anchor="center")
 
         # --- RIGHT SIDE: LOGIN FORM ---
         self.right_panel = ctk.CTkFrame(self.main_card, fg_color="white", corner_radius=20, width=500, height=550)
@@ -287,27 +367,27 @@ class InstallerLoginPage(ctk.CTkFrame):
 
         # Title
         ctk.CTkLabel(self.login_form, text="Welcome Back", 
-                     font=("Segoe UI", 28, "bold"), text_color="#333").pack(pady=(0, 5))
+                     font=("Segoe UI", 24, "bold"), text_color="#333").pack(pady=(0, 5))
         
         ctk.CTkLabel(self.login_form, text="Please sign in to configure the system", 
-                     font=("Segoe UI", 12), text_color="#757575").pack(pady=(0, 30))
+                     font=("Segoe UI", 11), text_color="#757575").pack(pady=(0, 30))
 
         # Fields
         self.user_entry = ctk.CTkEntry(self.login_form, placeholder_text="Username", height=50, width=300, 
-                                       font=("Segoe UI", 14), border_color="#E0E0E0", corner_radius=8)
+                                       font=("Segoe UI", 13), border_color="#E0E0E0", corner_radius=8)
         self.user_entry.pack(pady=10)
 
         self.pass_entry = ctk.CTkEntry(self.login_form, placeholder_text="Password", show="●", height=50, width=300, 
-                                       font=("Segoe UI", 14), border_color="#E0E0E0", corner_radius=8)
+                                       font=("Segoe UI", 13), border_color="#E0E0E0", corner_radius=8)
         self.pass_entry.pack(pady=10)
 
         # Error
-        self.error_label = ctk.CTkLabel(self.login_form, text="", text_color="#D32F2F", font=("Segoe UI", 12))
+        self.error_label = ctk.CTkLabel(self.login_form, text="", text_color="#D32F2F", font=("Segoe UI", 11))
         self.error_label.pack(pady=5)
 
         # Login Button
-        self.login_btn = ctk.CTkButton(self.login_form, text="LOGIN", 
-                                      font=("Segoe UI", 14, "bold"),
+        self.login_btn = ModernButton(self.login_form, text="LOGIN", 
+                                      font=("Segoe UI", 13, "bold"),
                                       height=50, width=300,
                                       fg_color="#1976D2", hover_color="#1565C0",
                                       corner_radius=8,
@@ -316,7 +396,7 @@ class InstallerLoginPage(ctk.CTkFrame):
         
         # Footer (keep at bottom of right panel using place to avoid conflict)
         ctk.CTkLabel(self.right_panel, text="Authorized Personnel Only", 
-                     font=("Segoe UI", 10), text_color="#9E9E9E").place(relx=0.5, rely=0.9, anchor="center")
+                     font=("Segoe UI", 11), text_color="#9E9E9E").place(relx=0.5, rely=0.9, anchor="center")
 
     def check_login(self):
         u = self.user_entry.get().strip()
@@ -351,17 +431,17 @@ class LicenseVerificationPage(ctk.CTkFrame):
         self.left_panel.pack_propagate(False)
         
         ctk.CTkLabel(self.left_panel, text="Step 2", 
-                     font=("Segoe UI", 32, "bold"), text_color="white").place(relx=0.5, rely=0.3, anchor="center")
+                     font=("Segoe UI", 24, "bold"), text_color="white").place(relx=0.5, rely=0.3, anchor="center")
         
         ctk.CTkLabel(self.left_panel, text="License Verification", 
-                     font=("Segoe UI", 18), text_color="#E3F2FD").place(relx=0.5, rely=0.38, anchor="center")
+                     font=("Segoe UI", 18, "bold"), text_color="#E3F2FD").place(relx=0.5, rely=0.38, anchor="center")
         
         info_text = ("Almost there!\n\nPlease upload the system\n"
                      "license file provided by\n"
                      "the manufacturer to proceed.")
         
         ctk.CTkLabel(self.left_panel, text=info_text, 
-                     font=("Segoe UI", 14), text_color="#BBDEFB", justify="center").place(relx=0.5, rely=0.55, anchor="center")
+                     font=("Segoe UI", 13), text_color="#BBDEFB", justify="center").place(relx=0.5, rely=0.55, anchor="center")
 
         # --- RIGHT SIDE: VERIFICATION ---
         self.right_panel = ctk.CTkFrame(self.main_card, fg_color="white", corner_radius=20, width=500, height=550)
@@ -375,11 +455,11 @@ class LicenseVerificationPage(ctk.CTkFrame):
                      font=("Segoe UI", 24, "bold"), text_color="#333").pack(pady=(0, 10))
         
         ctk.CTkLabel(self.form_container, text="Select your license key file (.key)", 
-                     font=("Segoe UI", 12), text_color="#757575").pack(pady=(0, 40))
+                     font=("Segoe UI", 11), text_color="#757575").pack(pady=(0, 40))
 
         # License Upload Button
-        self.license_btn = ctk.CTkButton(self.form_container, text="CLICK TO UPLOAD LICENSE", 
-                                       font=("Segoe UI", 14, "bold"),
+        self.license_btn = ModernButton(self.form_container, text="CLICK TO UPLOAD LICENSE", 
+                                       font=("Segoe UI", 13, "bold"),
                                        height=60, width=320,
                                        fg_color="#1976D2", hover_color="#1565C0",
                                        corner_radius=12,
@@ -387,12 +467,12 @@ class LicenseVerificationPage(ctk.CTkFrame):
         self.license_btn.pack(pady=20)
         
         # Error Label
-        self.error_label = ctk.CTkLabel(self.form_container, text="", text_color="#D32F2F", font=("Segoe UI", 12))
+        self.error_label = ctk.CTkLabel(self.form_container, text="", text_color="#D32F2F", font=("Segoe UI", 11))
         self.error_label.pack(pady=20)
 
         # Footer
         ctk.CTkLabel(self.right_panel, text="License Required for System Activation", 
-                     font=("Segoe UI", 10), text_color="#9E9E9E").place(relx=0.5, rely=0.9, anchor="center")
+                     font=("Segoe UI", 11), text_color="#9E9E9E").place(relx=0.5, rely=0.9, anchor="center")
 
     def upload_license(self):
         filename = filedialog.askopenfilename(
@@ -450,12 +530,12 @@ class AdminLoginPage(ctk.CTkFrame):
 
         comp_name = SetupDatabase.get_company_name()
         ctk.CTkLabel(self.left_panel, text=comp_name,
-                     font=("Segoe UI", 30, "bold"), text_color="white",
+                     font=("Segoe UI", 24, "bold"), text_color="white",
                      wraplength=380).place(relx=0.5, rely=0.3, anchor="center")
         ctk.CTkLabel(self.left_panel, text="Air Gauge Management",
-                     font=("Segoe UI", 16), text_color="#A5D6A7").place(relx=0.5, rely=0.4, anchor="center")
+                     font=("Segoe UI", 18, "bold"), text_color="#A5D6A7").place(relx=0.5, rely=0.4, anchor="center")
         ctk.CTkLabel(self.left_panel, text="System Locked",
-                     font=("Segoe UI", 14, "bold"), text_color="#C8E6C9").place(relx=0.5, rely=0.9, anchor="center")
+                     font=("Segoe UI", 13, "bold"), text_color="#C8E6C9").place(relx=0.5, rely=0.9, anchor="center")
 
         # --- RIGHT: LOGIN FORM ---
         self.right_panel = ctk.CTkFrame(self.main_card, fg_color="white", corner_radius=20, width=500, height=560)
@@ -465,26 +545,26 @@ class AdminLoginPage(ctk.CTkFrame):
         self.login_form.place(relx=0.5, rely=0.48, anchor="center")
 
         ctk.CTkLabel(self.login_form, text="Admin Login",
-                     font=("Segoe UI", 28, "bold"), text_color="#333").pack(pady=(0, 5))
+                     font=("Segoe UI", 24, "bold"), text_color="#333").pack(pady=(0, 5))
         ctk.CTkLabel(self.login_form, text="Enter your credentials to continue",
-                     font=("Segoe UI", 12), text_color="#757575").pack(pady=(0, 22))
+                     font=("Segoe UI", 11), text_color="#757575").pack(pady=(0, 22))
 
         self.user_entry = ctk.CTkEntry(self.login_form, placeholder_text="Admin Username",
-                                       height=50, width=300, font=("Segoe UI", 14),
+                                       height=50, width=300, font=("Segoe UI", 13),
                                        border_color="#E0E0E0", corner_radius=8)
         self.user_entry.pack(pady=8)
 
         self.pass_entry = ctk.CTkEntry(self.login_form, placeholder_text="Password",
                                        show="●", height=50, width=300,
-                                       font=("Segoe UI", 14), border_color="#E0E0E0", corner_radius=8)
+                                       font=("Segoe UI", 13), border_color="#E0E0E0", corner_radius=8)
         self.pass_entry.pack(pady=8)
 
         self.error_label = ctk.CTkLabel(self.login_form, text="", text_color="#D32F2F",
-                                        font=("Segoe UI", 12))
+                                        font=("Segoe UI", 11))
         self.error_label.pack(pady=(6, 2))
 
-        self.login_btn = ctk.CTkButton(self.login_form, text="UNLOCK SYSTEM",
-                                       font=("Segoe UI", 14, "bold"),
+        self.login_btn = ModernButton(self.login_form, text="UNLOCK SYSTEM",
+                                       font=("Segoe UI", 13, "bold"),
                                        height=50, width=300,
                                        fg_color="#2E7D32", hover_color="#1B5E20",
                                        corner_radius=8,
@@ -495,7 +575,7 @@ class AdminLoginPage(ctk.CTkFrame):
         forgot_lbl = ctk.CTkLabel(
             self.login_form, 
             text="🔑  Forgot Password?",
-            font=("Segoe UI", 12, "underline"),
+            font=("Segoe UI", 11, "underline"),
             text_color="#1976D2",
             cursor="hand2"
         )
@@ -503,7 +583,7 @@ class AdminLoginPage(ctk.CTkFrame):
         forgot_lbl.bind("<Button-1>", lambda e: self.open_forgot_password())
 
         ctk.CTkLabel(self.right_panel, text="Secure Terminal v1.0",
-                     font=("Segoe UI", 10), text_color="#9E9E9E").place(relx=0.5, rely=0.95, anchor="center")
+                     font=("Segoe UI", 11), text_color="#9E9E9E").place(relx=0.5, rely=0.95, anchor="center")
 
     def check_login(self):
         admin_name_input = self.user_entry.get().strip()
@@ -556,7 +636,7 @@ class ForgotPasswordDialog(tk.Toplevel):
         tk.Frame(left, bg="#4CAF50", height=5).pack(fill="x")
 
         tk.Label(left, text="Need Help?",
-                 font=("Segoe UI", 22, "bold"), fg="white", bg="#1B5E20").pack(pady=(28, 4))
+                 font=("Segoe UI", 18, "bold"), fg="white", bg="#1B5E20").pack(pady=(28, 4))
         tk.Label(left, text="Cherry Precision Service Support",
                  font=("Segoe UI", 11), fg="#A5D6A7", bg="#1B5E20").pack(pady=(0, 14))
         tk.Frame(left, bg="#4CAF50", height=1, width=280).pack(pady=(0, 16))
@@ -582,13 +662,13 @@ class ForgotPasswordDialog(tk.Toplevel):
         for label, value in contacts:
             row = tk.Frame(body, bg="#1B5E20")
             row.pack(fill="x", pady=3)
-            tk.Label(row, text=label, font=("Segoe UI", 10, "bold"),
+            tk.Label(row, text=label, font=("Segoe UI", 11, "bold"),
                      fg="#81C784", bg="#1B5E20", width=13, anchor="w").pack(side="left")
-            tk.Label(row, text=value, font=("Segoe UI", 10),
+            tk.Label(row, text=value, font=("Segoe UI", 11),
                      fg="white", bg="#1B5E20", anchor="w").pack(side="left")
 
         tk.Label(left, text="Please have your machine serial\nnumber ready when you call.",
-                 font=("Segoe UI", 10, "italic"), fg="#A5D6A7",
+                 font=("Segoe UI", 11, "italic"), fg="#A5D6A7",
                  bg="#1B5E20", justify="center").pack(side="bottom", pady=20)
 
         # ── RIGHT: credentials entry ─────────────────────────
@@ -603,20 +683,20 @@ class ForgotPasswordDialog(tk.Toplevel):
         inner.pack(expand=True, padx=32, pady=30)
 
         tk.Label(inner, text="Enter Cherry Service Credentials",
-                 font=("Segoe UI", 17, "bold"), fg="#1B5E20", bg="white").pack(pady=(0, 6))
+                 font=("Segoe UI", 18, "bold"), fg="#1B5E20", bg="white").pack(pady=(0, 6))
         tk.Label(inner,
                  text="Use the Cherry Service ID & Password\nprovided by your service representative.",
                  font=("Segoe UI", 11), fg="#757575", bg="white",
                  justify="center").pack(pady=(0, 22))
 
-        tk.Label(inner, text="Cherry Service ID", font=("Segoe UI", 12, "bold"),
+        tk.Label(inner, text="Cherry Service ID", font=("Segoe UI", 11, "bold"),
                  fg="#333", bg="white", anchor="w").pack(fill="x")
         self.id_entry = ctk.CTkEntry(inner, placeholder_text="Enter Cherry Service ID",
                                      height=44, width=320, font=("Segoe UI", 13),
                                      border_color="#B0BEC5", corner_radius=8)
         self.id_entry.pack(pady=(4, 12))
 
-        tk.Label(inner, text="Cherry Service Password", font=("Segoe UI", 12, "bold"),
+        tk.Label(inner, text="Cherry Service Password", font=("Segoe UI", 11, "bold"),
                  fg="#333", bg="white", anchor="w").pack(fill="x")
         self.pw_entry = ctk.CTkEntry(inner, placeholder_text="Enter service password",
                                      show="●", height=44, width=320,
@@ -628,14 +708,14 @@ class ForgotPasswordDialog(tk.Toplevel):
                                 fg="#C62828", bg="white", wraplength=320, justify="center")
         self.err_lbl.pack(pady=(0, 8))
 
-        ctk.CTkButton(inner, text="VERIFY & RESET PASSWORD",
+        ModernButton(inner, text="VERIFY & RESET PASSWORD",
                       font=("Segoe UI", 13, "bold"),
                       height=46, width=320,
                       fg_color="#2E7D32", hover_color="#1B5E20",
                       corner_radius=8,
                       command=self.on_verify).pack(pady=4)
 
-        ctk.CTkButton(inner, text="Cancel",
+        ModernButton(inner, text="Cancel",
                       font=("Segoe UI", 11), height=36, width=320,
                       fg_color="transparent", hover_color="#E8F5E9",
                       text_color="#555", border_width=1, border_color="#BDBDBD",
@@ -697,21 +777,21 @@ class ResetPasswordDialog(tk.Toplevel):
         card.pack(fill="both", expand=True, padx=44, pady=30)
 
         tk.Label(card, text="Set New Admin Credentials",
-                 font=("Segoe UI", 20, "bold"), fg="#1B5E20", bg="white").pack(pady=(0, 6))
+                 font=("Segoe UI", 18, "bold"), fg="#1B5E20", bg="white").pack(pady=(0, 6))
         tk.Label(card,
                  text="Set a new admin username and a strong password.\n"
                       "Your previous credentials will be deactivated after saving.",
                  font=("Segoe UI", 11), fg="#555", bg="white",
                  justify="center").pack(pady=(0, 20))
 
-        tk.Label(card, text="New Admin Username", font=("Segoe UI", 12, "bold"),
+        tk.Label(card, text="New Admin Username", font=("Segoe UI", 11, "bold"),
                  fg="#333", bg="white", anchor="w").pack(fill="x")
         self.name_ent = ctk.CTkEntry(card, placeholder_text="Enter new admin username",
                                      height=44, width=360, font=("Segoe UI", 13),
                                      border_color="#B0BEC5", corner_radius=8)
         self.name_ent.pack(pady=(4, 10))
 
-        tk.Label(card, text="New Password", font=("Segoe UI", 12, "bold"),
+        tk.Label(card, text="New Password", font=("Segoe UI", 11, "bold"),
                  fg="#333", bg="white", anchor="w").pack(fill="x")
         self.pass_ent = ctk.CTkEntry(card, placeholder_text="Enter new password",
                                      show="●", height=44, width=360,
@@ -720,7 +800,7 @@ class ResetPasswordDialog(tk.Toplevel):
         self.pass_ent.pack(pady=(4, 10))
         self.pass_ent.bind("<KeyRelease>", self._validate)
 
-        tk.Label(card, text="Confirm Password", font=("Segoe UI", 12, "bold"),
+        tk.Label(card, text="Confirm Password", font=("Segoe UI", 11, "bold"),
                  fg="#333", bg="white", anchor="w").pack(fill="x")
         self.conf_ent = ctk.CTkEntry(card, placeholder_text="Re-enter new password",
                                      show="●", height=44, width=360,
@@ -739,7 +819,7 @@ class ResetPasswordDialog(tk.Toplevel):
                           ("special", "One special character"),
                           ("match",   "Passwords match")]:
             lbl = tk.Label(rules_frame, text=f"❌  {text}",
-                           font=("Segoe UI", 10), fg="#757575", bg="white", anchor="w")
+                           font=("Segoe UI", 11), fg="#757575", bg="white", anchor="w")
             lbl.pack(fill="x")
             self._rule_labels[key] = lbl
 
@@ -747,7 +827,7 @@ class ResetPasswordDialog(tk.Toplevel):
                                 fg="#C62828", bg="white")
         self.err_lbl.pack(pady=(0, 6))
 
-        self.save_btn = ctk.CTkButton(card, text="SAVE NEW CREDENTIALS",
+        self.save_btn = ModernButton(card, text="SAVE NEW CREDENTIALS",
                                       font=("Segoe UI", 13, "bold"),
                                       height=46, width=360,
                                       fg_color="#2E7D32", hover_color="#1B5E20",
@@ -756,7 +836,7 @@ class ResetPasswordDialog(tk.Toplevel):
                                       command=self.on_save)
         self.save_btn.pack(pady=4)
 
-        ctk.CTkButton(card, text="Cancel",
+        ModernButton(card, text="Cancel",
                       font=("Segoe UI", 11), height=36, width=360,
                       fg_color="transparent", hover_color="#E8F5E9",
                       text_color="#555", border_width=1, border_color="#BDBDBD",
@@ -1360,10 +1440,10 @@ class OrganizationSetupPage(ctk.CTkFrame):
         
         # Content Left
         ctk.CTkLabel(self.left_panel, text="Setup Wizard", 
-                     font=("Segoe UI", 32, "bold"), text_color="white").place(relx=0.5, rely=0.2, anchor="center")
+                     font=("Segoe UI", 24, "bold"), text_color="white").place(relx=0.5, rely=0.2, anchor="center")
         
         ctk.CTkLabel(self.left_panel, text="Step 1: Organization", 
-                     font=("Segoe UI", 16), text_color="#BBDEFB").place(relx=0.5, rely=0.28, anchor="center")
+                     font=("Segoe UI", 18, "bold"), text_color="#BBDEFB").place(relx=0.5, rely=0.28, anchor="center")
         
         info_text = ("Welcome to your Air Gauge System.\n\n"
                      "Please provide the company details.\n\n"
@@ -1371,7 +1451,7 @@ class OrganizationSetupPage(ctk.CTkFrame):
                      "in the application settings.")
         
         ctk.CTkLabel(self.left_panel, text=info_text, 
-                     font=("Segoe UI", 14), text_color="#E3F2FD", justify="center").place(relx=0.5, rely=0.5, anchor="center")
+                     font=("Segoe UI", 13), text_color="#E3F2FD", justify="center").place(relx=0.5, rely=0.5, anchor="center")
 
         # --- RIGHT SIDE: FORM ---
         self.right_panel = ctk.CTkFrame(self.main_card, fg_color="white", corner_radius=20, width=600, height=600)
@@ -1391,12 +1471,12 @@ class OrganizationSetupPage(ctk.CTkFrame):
         self.create_field("Address", "address")
 
         # Error Label
-        self.error_label = ctk.CTkLabel(self.form_container, text="", text_color="red", font=("Segoe UI", 12))
+        self.error_label = ctk.CTkLabel(self.form_container, text="", text_color="red", font=("Segoe UI", 11))
         self.error_label.pack(pady=(10, 5))
 
         # Save Button
-        self.save_btn = ctk.CTkButton(self.form_container, text="Next: Admin Setup ➔", 
-                                      font=("Segoe UI", 14, "bold"),
+        self.save_btn = ModernButton(self.form_container, text="Next: Admin Setup ➔", 
+                                      font=("Segoe UI", 13, "bold"),
                                       height=45, width=250,
                                       fg_color="#1976D2", hover_color="#1565C0",
                                       corner_radius=8,
@@ -1407,7 +1487,7 @@ class OrganizationSetupPage(ctk.CTkFrame):
         frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
         frame.pack(pady=10, fill="x")
         
-        ctk.CTkLabel(frame, text=label_text, font=("Segoe UI", 12, "bold"), text_color="#555", anchor="w").pack(fill="x", pady=(0, 2))
+        ctk.CTkLabel(frame, text=label_text, font=("Segoe UI", 11, "bold"), text_color="#555", anchor="w").pack(fill="x", pady=(0, 2))
         
         entry = ctk.CTkEntry(frame, height=40, width=320, font=("Segoe UI", 13), border_color="#E0E0E0", corner_radius=6)
         entry.pack(fill="x")
@@ -1446,17 +1526,17 @@ class AdminSetupPage(ctk.CTkFrame):
         self.left_panel.pack_propagate(False)
         
         ctk.CTkLabel(self.left_panel, text="Setup Wizard", 
-                     font=("Segoe UI", 32, "bold"), text_color="white").place(relx=0.5, rely=0.2, anchor="center")
+                     font=("Segoe UI", 24, "bold"), text_color="white").place(relx=0.5, rely=0.2, anchor="center")
         
         ctk.CTkLabel(self.left_panel, text="Step 2: Administrator", 
-                     font=("Segoe UI", 16), text_color="#BBDEFB").place(relx=0.5, rely=0.28, anchor="center")
+                     font=("Segoe UI", 18, "bold"), text_color="#BBDEFB").place(relx=0.5, rely=0.28, anchor="center")
         
         info_text = ("Set up the primary admin account.\n\n"
                      "This account will be used to access\n"
                      "system settings and configurations.")
         
         ctk.CTkLabel(self.left_panel, text=info_text, 
-                     font=("Segoe UI", 14), text_color="#E3F2FD", justify="center").place(relx=0.5, rely=0.5, anchor="center")
+                     font=("Segoe UI", 13), text_color="#E3F2FD", justify="center").place(relx=0.5, rely=0.5, anchor="center")
 
         # --- RIGHT SIDE: FORM ---
         self.right_panel = ctk.CTkFrame(self.main_card, fg_color="white", corner_radius=20, width=600, height=600)
@@ -1471,14 +1551,14 @@ class AdminSetupPage(ctk.CTkFrame):
         # Admin Name
         name_frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
         name_frame.pack(pady=5, fill="x")
-        ctk.CTkLabel(name_frame, text="Admin Name", font=("Segoe UI", 12, "bold"), text_color="#555", anchor="w").pack(fill="x", pady=(0, 2))
+        ctk.CTkLabel(name_frame, text="Admin Name", font=("Segoe UI", 11, "bold"), text_color="#555", anchor="w").pack(fill="x", pady=(0, 2))
         self.name_entry = ctk.CTkEntry(name_frame, height=40, width=320, font=("Segoe UI", 13), border_color="#E0E0E0", corner_radius=6)
         self.name_entry.pack(fill="x")
 
         # Password
         pass_frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
         pass_frame.pack(pady=5, fill="x")
-        ctk.CTkLabel(pass_frame, text="Password", font=("Segoe UI", 12, "bold"), text_color="#555", anchor="w").pack(fill="x", pady=(0, 2))
+        ctk.CTkLabel(pass_frame, text="Password", font=("Segoe UI", 11, "bold"), text_color="#555", anchor="w").pack(fill="x", pady=(0, 2))
         self.pass_entry = ctk.CTkEntry(pass_frame, height=40, width=320, font=("Segoe UI", 13), show="●", border_color="#E0E0E0", corner_radius=6)
         self.pass_entry.pack(fill="x")
         self.pass_entry.bind("<KeyRelease>", self.validate_password)
@@ -1486,7 +1566,7 @@ class AdminSetupPage(ctk.CTkFrame):
         # Confirm Password
         confirm_frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
         confirm_frame.pack(pady=5, fill="x")
-        ctk.CTkLabel(confirm_frame, text="Confirm Password", font=("Segoe UI", 12, "bold"), text_color="#555", anchor="w").pack(fill="x", pady=(0, 2))
+        ctk.CTkLabel(confirm_frame, text="Confirm Password", font=("Segoe UI", 11, "bold"), text_color="#555", anchor="w").pack(fill="x", pady=(0, 2))
         self.confirm_entry = ctk.CTkEntry(confirm_frame, height=40, width=320, font=("Segoe UI", 13), show="●", border_color="#E0E0E0", corner_radius=6)
         self.confirm_entry.pack(fill="x")
         self.confirm_entry.bind("<KeyRelease>", self.validate_password)
@@ -1506,12 +1586,12 @@ class AdminSetupPage(ctk.CTkFrame):
             self.rule_labels[key] = lbl
 
         # Error
-        self.error_label = ctk.CTkLabel(self.form_container, text="", text_color="red", font=("Segoe UI", 12))
+        self.error_label = ctk.CTkLabel(self.form_container, text="", text_color="red", font=("Segoe UI", 11))
         self.error_label.pack(pady=(5, 5))
 
         # Save
-        self.save_btn = ctk.CTkButton(self.form_container, text="Save & Launch", 
-                                      font=("Segoe UI", 14, "bold"),
+        self.save_btn = ModernButton(self.form_container, text="Save & Launch", 
+                                      font=("Segoe UI", 13, "bold"),
                                       height=45, width=250,
                                       fg_color="#1976D2", hover_color="#1565C0",
                                       state="disabled",
@@ -1603,16 +1683,16 @@ class SplashScreen(tk.Toplevel):
         cx, cy = sw // 2, sh // 2 - 80
         canvas.create_oval(cx-60, cy-60, cx+60, cy+60,
                            fill="#1565C0", outline="#42A5F5", width=2)
-        canvas.create_text(cx, cy, text="🍒", font=("Segoe UI Emoji", 36))
+        canvas.create_text(cx, cy, text="🍒", font=("Segoe UI", 24, "bold"))
 
         # ── App title ──────────────────────────────────────────
         canvas.create_text(sw // 2, sh // 2 + 10,
                            text="Cherry Precision Products",
-                           font=("Segoe UI", 34, "bold"),
+                           font=("Segoe UI", 24, "bold"),
                            fill="white")
         canvas.create_text(sw // 2, sh // 2 + 56,
                            text="Air Gauge  •  SPC System  •  v2.0",
-                           font=("Segoe UI", 15),
+                           font=("Segoe UI", 13),
                            fill="#90CAF9")
 
         # Divider line
@@ -1907,149 +1987,104 @@ class CherryApp(ctk.CTk):
     # ─────────────────────────────────────────────────────────────────
     def _switch_page_with_overlay(self, load_fn, delay_ms=50, manual_dismiss=False,
                                     page_attr=None):
-        """
-        Show a full-screen loading overlay over content_frame while load_fn()
-        runs, then fade the overlay away so the new page appears cleanly.
+        # Prevent double transitions
+        if getattr(self, "_transition_in_progress", False):
+            return
 
-        page_attr – optional attribute name of the target page widget on self.
-                    When provided and the widget already exists (cached), the
-                    overlay is SKIPPED ENTIRELY for an instant, flicker-free
-                    switch.  Only brand-new pages get the loading screen.
-        """
-        # ── Smart cache bypass ─────────────────────────────────────────
-        # If the target page widget already exists and is alive, a simple
-        # pack() call is essentially instant — there is no one-by-one
-        # rendering, so showing the overlay would only add an ugly flash.
-        if page_attr is not None:
-            existing = getattr(self, page_attr, None)
-            if existing is not None and hasattr(existing, "winfo_exists"):
+        cf = self.content_frame
+        w = cf.winfo_width()
+        h = cf.winfo_height()
+        
+        # Get current page (any widget packed in content_frame)
+        old_page = None
+        for widget in cf.winfo_children():
+            if widget.winfo_manager() == "pack" and widget.winfo_viewable():
+                old_page = widget
+                break
+
+        def do_slide_transition(new_page):
+            if not old_page or not new_page or w < 50 or h < 50:
+                # Fallback: instant switch
+                if old_page:
+                    try: old_page.pack_forget()
+                    except: pass
+                new_page.pack(fill="both", expand=True)
+                self._transition_in_progress = False
+                return
+
+            self._transition_in_progress = True
+            
+            # Place old page so it stays visible while forgotten from pack
+            try:
+                old_page.pack_forget()
+                old_page.place(x=0, y=0, width=w, height=h)
+            except:
+                pass
+
+            # Place new page offscreen to the right
+            try:
+                new_page.pack_forget()
+                new_page.place(x=w, y=0, width=w, height=h)
+                new_page.lift()
+            except:
+                pass
+
+            duration = 320 # ms
+            start_time = time.time() * 1000
+
+            def step():
+                elapsed = (time.time() * 1000) - start_time
+                progress = min(elapsed / duration, 1.0)
+                eased = Easing.ease_out_cubic(progress)
+                
+                old_x = int(-w * eased)
+                new_x = int(w - w * eased)
+
                 try:
-                    if existing.winfo_exists():
-                        load_fn()
-                        return
-                except Exception:
+                    if old_page: old_page.place(x=old_x, y=0)
+                    new_page.place(x=new_x, y=0)
+                except:
                     pass
 
-        # Guard: don't stack overlays
-        if getattr(self, "_overlay_active", False):
-            load_fn()
-            return
+                if progress < 1.0:
+                    self.after(14, step)
+                else:
+                    try:
+                        if old_page: old_page.place_forget()
+                        new_page.place_forget()
+                        new_page.pack(fill="both", expand=True)
+                    except:
+                        pass
+                    self._transition_in_progress = False
+                    
+                    # Notify callback if manual dismiss is requested
+                    if manual_dismiss and hasattr(self, "_dismiss_overlay_callback"):
+                        try: self._dismiss_overlay_callback()
+                        except: pass
 
-        self._overlay_active = True
+            step()
 
-        # ── Build overlay (LIGHT THEME — matches the full light app) ────
-        try:
-            cf = self.content_frame
-            # Soft white overlay — completely blends with the light UI
-            OV_BG  = "#FFFFFF"   # pure white base
-            SP_COL = "#1976D2"   # brand blue spinner
-            TX_COL = "#546E7A"   # muted dark text
-
-            ov = tk.Frame(cf, bg=OV_BG)
-            ov.place(x=0, y=0, relwidth=1, relheight=1)
-            ov.lift()
-
-            # Braille-dot spinner
-            spinner_chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-            spin_var = tk.StringVar(value=spinner_chars[0])
-            spin_idx = [0]
-            spin_job = [None]
-
-            spin_lbl = tk.Label(
-                ov, textvariable=spin_var,
-                font=("Segoe UI", 36),
-                fg=SP_COL, bg=OV_BG
-            )
-            spin_lbl.place(relx=0.5, rely=0.45, anchor="center")
-
-            msg_lbl = tk.Label(
-                ov, text="Loading…",
-                font=("Segoe UI", 13),
-                fg=TX_COL, bg=OV_BG
-            )
-            msg_lbl.place(relx=0.5, rely=0.54, anchor="center")
-
-            def _spin():
-                if not ov.winfo_exists():
-                    return
-                spin_idx[0] = (spin_idx[0] + 1) % len(spinner_chars)
-                spin_var.set(spinner_chars[spin_idx[0]])
-                spin_job[0] = ov.after(80, _spin)
-
-            _spin()
-            ov.update_idletasks()   # Force paint before load_fn runs
-        except Exception:
-            self._overlay_active = False
-            load_fn()
-            return
-
-        # ── Run the actual page load after the overlay is visible ──────
-        # Wait 220 ms after load_fn finishes so the new page has time to
-        # complete its first full paint cycle before the overlay fades.
-        # This is the key fix for "content appearing one-by-one".
-        def trigger_fade():
-            self.after(220, lambda: _fade_out(ov, 1.0, spin_job))
-
-        if manual_dismiss:
-            self._dismiss_overlay_callback = trigger_fade
-
-        def _do_load():
+        # Run load_fn to instantiate/pack new_page
+        def run_load():
             try:
                 load_fn()
-            finally:
-                if not manual_dismiss:
-                    trigger_fade()
+                
+                # Find new page (packed after load)
+                new_page = None
+                for widget in cf.winfo_children():
+                    if widget.winfo_manager() == "pack" and widget != old_page:
+                        new_page = widget
+                        break
+                        
+                if new_page:
+                    do_slide_transition(new_page)
+                else:
+                    self._transition_in_progress = False
+            except Exception as e:
+                print("Transition load error:", e)
+                self._transition_in_progress = False
 
-        self.after(delay_ms, _do_load)
-
-        # ── Fade out the overlay ───────────────────────────────────────
-        def _fade_out(overlay, alpha, spin_job_ref):
-            if not overlay.winfo_exists():
-                self._overlay_active = False
-                return
-            if alpha > 0:
-                # Light-theme fade: white (#FFFFFF) → transparent
-                # Since tk.Frame can't be truly transparent, we simulate by
-                # raising children's alpha via text-colour fade toward bg.
-                try:
-                    # Fade spinner + text colour toward white (invisible)
-                    # alpha 1.0 → brand-blue/dark-text; 0.0 → white (gone)
-                    def _lerp(start, end, t):
-                        return int(start + (end - start) * t)
-                    t = 1.0 - alpha          # 0.0 at start, 1.0 at end
-                    # Spinner: #1976D2 → #FFFFFF
-                    sr = _lerp(0x19, 0xFF, t)
-                    sg = _lerp(0x76, 0xFF, t)
-                    sb = _lerp(0xD2, 0xFF, t)
-                    # Text: #546E7A → #FFFFFF
-                    tr = _lerp(0x54, 0xFF, t)
-                    tg = _lerp(0x6E, 0xFF, t)
-                    tb = _lerp(0x7A, 0xFF, t)
-                    for child in overlay.winfo_children():
-                        try:
-                            child.configure(
-                                fg=f"#{sr:02x}{sg:02x}{sb:02x}"
-                                if child == spin_lbl else
-                                f"#{tr:02x}{tg:02x}{tb:02x}"
-                            )
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-                overlay.after(14, lambda: _fade_out(overlay, alpha - 0.10, spin_job_ref))
-            else:
-                # Cancel spinner, destroy overlay
-                if spin_job_ref[0]:
-                    try:
-                        overlay.after_cancel(spin_job_ref[0])
-                    except Exception:
-                        pass
-                try:
-                    overlay.destroy()
-                except Exception:
-                    pass
-                self._overlay_active = False
-
+        self.after(delay_ms, run_load)
 
     def _load_comp_json(self):
         """Load component setup JSON from SQLite for tolerance lookups."""
@@ -2229,17 +2264,17 @@ class CherryApp(ctk.CTk):
 
         # --- Title and labels ---
         title = ctk.CTkLabel(box, text="🔒 Admin Access Required",
-                             font=("Times New Roman", 17, "bold"), text_color="#1976D2")
+                             font=("Segoe UI", 18, "bold"), text_color="#1976D2")
         title.pack(pady=(20, 5))
 
         subtitle = ctk.CTkLabel(box, text="Enter password to access AirGauge Setup",
-                                font=("Times New Roman", 13), text_color="#555")
+                                font=("Segoe UI", 13), text_color="#555")
         subtitle.pack(pady=(0, 10))
 
         pwd_entry = ctk.CTkEntry(box, show="*", width=220, placeholder_text="Enter password...")
         pwd_entry.pack(pady=5)
 
-        status_lbl = ctk.CTkLabel(box, text="", text_color="red", font=("Times New Roman", 11))
+        status_lbl = ctk.CTkLabel(box, text="", text_color="red", font=("Segoe UI", 11))
         status_lbl.pack(pady=(4, 8))
 
         # --- Button Frame ---
@@ -2286,10 +2321,10 @@ class CherryApp(ctk.CTk):
             fade_out_overlay()
             self.status_label.configure(text="Access cancelled")
 
-        ctk.CTkButton(btn_frame, text="✔ Submit", width=100,
+        ModernButton(btn_frame, text="✔ Submit", width=100,
                       fg_color="#43A047", hover_color="#388E3C",
                       command=check_pass).pack(side="left", padx=10)
-        ctk.CTkButton(btn_frame, text="✖ Cancel", width=100,
+        ModernButton(btn_frame, text="✖ Cancel", width=100,
                       fg_color="#E53935", hover_color="#C62828",
                       command=cancel_login).pack(side="left", padx=10)
 
@@ -2314,17 +2349,17 @@ class CherryApp(ctk.CTk):
 
         # --- Title and labels ---
         title = ctk.CTkLabel(box, text="🔒 Admin Access Required",
-                             font=("Times New Roman", 17, "bold"), text_color="#1976D2")
+                             font=("Segoe UI", 18, "bold"), text_color="#1976D2")
         title.pack(pady=(20, 5))
 
         subtitle = ctk.CTkLabel(box, text="Enter password to access Settings",
-                                font=("Times New Roman", 13), text_color="#555")
+                                font=("Segoe UI", 13), text_color="#555")
         subtitle.pack(pady=(0, 10))
 
         pwd_entry = ctk.CTkEntry(box, show="*", width=220, placeholder_text="Enter password...")
         pwd_entry.pack(pady=5)
 
-        status_lbl = ctk.CTkLabel(box, text="", text_color="red", font=("Times New Roman", 11))
+        status_lbl = ctk.CTkLabel(box, text="", text_color="red", font=("Segoe UI", 11))
         status_lbl.pack(pady=(4, 8))
 
         # --- Button Frame ---
@@ -2368,10 +2403,10 @@ class CherryApp(ctk.CTk):
             fade_out_overlay()
             self.status_label.configure(text="Access cancelled")
 
-        ctk.CTkButton(btn_frame, text="✔ Submit", width=100,
+        ModernButton(btn_frame, text="✔ Submit", width=100,
                       fg_color="#43A047", hover_color="#388E3C",
                       command=check_pass).pack(side="left", padx=10)
-        ctk.CTkButton(btn_frame, text="✖ Cancel", width=100,
+        ModernButton(btn_frame, text="✖ Cancel", width=100,
                       fg_color="#E53935", hover_color="#C62828",
                       command=cancel_login).pack(side="left", padx=10)
 
@@ -2591,10 +2626,10 @@ class CherryApp(ctk.CTk):
         header_inner.pack(fill="both", expand=True, padx=2, pady=2)
         
         # Add Hamburger Menu Button (Three dashes ☰ with "More") on the far left of the header
-        self.menu_btn = ctk.CTkButton(
+        self.menu_btn = ModernButton(
             header_inner,
             text="☰  More",
-            font=("Segoe UI", 15, "bold"),
+            font=("Segoe UI", 13, "bold"),
             text_color="white",
             fg_color="transparent",
             hover_color="#1565C0",
@@ -2624,7 +2659,7 @@ class CherryApp(ctk.CTk):
             title_text = ctk.CTkLabel(
                 header_inner, 
                 text="|  Airgauge Monitoring",
-                font=("Times New Roman", 22, "bold"),
+                font=("Segoe UI", 18, "bold"),
                 text_color="white"
             )
             title_text.pack(side="left", padx=(0, 24), pady=15)
@@ -2635,7 +2670,7 @@ class CherryApp(ctk.CTk):
             title = ctk.CTkLabel(
                 header_inner,
                 text="Cherry Precision – Air Gauge Monitoring",
-                font=("Times New Roman", 20, "bold"),
+                font=("Segoe UI", 18, "bold"),
                 text_color="white"
             )
             title.pack(side="left", padx=24, pady=15)
@@ -2654,14 +2689,14 @@ class CherryApp(ctk.CTk):
             status_frame,
             text="●",
             text_color="#F44336",  # 🔴 default disconnected
-            font=("Times New Roman", 22, "bold")
+            font=("Segoe UI", 18, "bold")
         )
         self.status_light.pack(side="left", padx=(12, 6), pady=8)
 
         self.status_label = ctk.CTkLabel(
             status_frame,
             text="Disconnected",
-            font=("Times New Roman", 13, "bold"),
+            font=("Segoe UI", 13, "bold"),
             text_color="white"
         )
         self.status_label.pack(side="left", padx=(0, 12), pady=8)
@@ -2670,31 +2705,31 @@ class CherryApp(ctk.CTk):
         self._pulse_status_light()
 
         # --- Modern Connect Button with Glass Effect ---
-        self.connect_btn = ctk.CTkButton(
+        self.connect_btn = ModernButton(
             header_inner,
             text="🔌 Connect",
             width=120,
             height=42,
             fg_color="#43A047",
             hover_color="#388E3C",
-            corner_radius=10,
+            corner_radius=8,
             border_width=0,
-            font=("Times New Roman", 13, "bold"),
+            font=("Segoe UI", 13, "bold"),
             command=self.connect_esp32
         )
         self.connect_btn.pack(side="left", padx=8, pady=12)
 
         # --- Modern Disconnect Button ---
-        self.disconnect_btn = ctk.CTkButton(
+        self.disconnect_btn = ModernButton(
             header_inner,
             text="❌ Disconnect",
             width=130,
             height=42,
             fg_color="#E53935",
             hover_color="#D32F2F",
-            corner_radius=10,
+            corner_radius=8,
             border_width=0,
-            font=("Times New Roman", 13, "bold"),
+            font=("Segoe UI", 13, "bold"),
             command=self.disconnect_esp32
         )
         self.disconnect_btn.pack(side="left", padx=8, pady=12)
@@ -2703,7 +2738,7 @@ class CherryApp(ctk.CTk):
         wifi_frame = ctk.CTkFrame(
             header_inner,
             fg_color="#1E3A5F",
-            corner_radius=10,
+            corner_radius=8,
             border_width=1,
             border_color="#42A5F5"
         )
@@ -2721,7 +2756,7 @@ class CherryApp(ctk.CTk):
         self._wifi_label = ctk.CTkLabel(
             wifi_frame,
             text="--",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 11, "bold"),
             text_color="#90CAF9",
             width=58
         )
@@ -2867,14 +2902,14 @@ class CherryApp(ctk.CTk):
             pady_val = (15, 4) if key == "home" else 4
             btn_container.pack(fill="x", padx=12, pady=pady_val)
             
-            btn = ctk.CTkButton(
+            btn = ModernButton(
                 btn_container,
                 text=text,
-                font=("Times New Roman", 14),
-                fg_color="#37474F",
-                hover_color="#455A64",
+                font=("Segoe UI", 13, "bold"),
+                fg_color="transparent",
+                hover_color="#37474F",
                 text_color="white",
-                corner_radius=10,
+                corner_radius=8,
                 height=48,
                 border_width=0,
                 anchor="w",
@@ -2895,7 +2930,7 @@ class CherryApp(ctk.CTk):
         ctk.CTkLabel(
             footer_frame,
             text="v2.0",
-            font=("Times New Roman", 9),
+            font=("Segoe UI", 9),
             text_color="#546E7A"
         ).pack()
     
@@ -2904,19 +2939,17 @@ class CherryApp(ctk.CTk):
         # Reset all buttons to normal state
         for btn_key, btn in self.sidebar_buttons.items():
             if btn_key == key:
-                # Active state - brighter color with subtle border effect
+                # Active state - Premium Brand Blue highlight
                 btn.configure(
-                    fg_color="#42A5F5",
-                    hover_color="#1E88E5"
+                    fg_color="#1976D2",
+                    hover_color="#1565C0"
                 )
             else:
-                # Normal state
+                # Inactive state - transparent blending into dark slate background
                 btn.configure(
-                    fg_color="#37474F",
-                    hover_color="#455A64"
+                    fg_color="transparent",
+                    hover_color="#37474F"
                 )
-        
-        # Call the original function
         func()
 
 
@@ -2925,55 +2958,10 @@ class CherryApp(ctk.CTk):
         # === Modern Content Area with Subtle Background ===
         self.content_frame = ctk.CTkFrame(
             self, 
-            fg_color="transparent",
+            fg_color="#F5F7FA",
             corner_radius=0
         )
         self.content_frame.pack(side="right", fill="both", expand=True)
-        
-        # --- Modern Welcome Card ---
-        welcome_container = ctk.CTkFrame(
-            self.content_frame,
-            fg_color="transparent"
-        )
-        
-        # --- BACKGROUND IMAGE ---
-        try:
-            # DEBUG: Print path
-            bg_path = resource_path("settings/welcome_bg.png")
-            print(f"Loading background from: {bg_path}")
-            
-            if not os.path.exists(bg_path):
-                 print("ERROR: Background file not found!")
-                 
-            bg_pil = Image.open(bg_path)
-            
-            # Store original for resizing
-            self.bg_pil_original = bg_pil
-            
-            # Initial resize to current approximate size
-            init_w = 1010 
-            init_h = 650
-            
-            # Simple resize to fill logic
-            bg_start = bg_pil.resize((init_w, init_h), Image.Resampling.LANCZOS)
-            
-            self.bg_image_ref = ctk.CTkImage(bg_start, size=(init_w, init_h))
-            
-            self.bg_label = ctk.CTkLabel(self.content_frame, text="", image=self.bg_image_ref)
-            self.bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-            self.bg_label.lower()  # With transparent frame, this is fine.
-            
-            # Dynamic Resize Binding
-            self.content_frame.bind("<Configure>", self._on_content_resize)
-            # Force triggering initial resize after a moment
-
-            # Better: just call logic manually
-            self.after(500, lambda: self._resize_background_action(self.content_frame.winfo_width(), self.content_frame.winfo_height()))
-            
-        except Exception as e:
-            print(f"Background load error: {e}")
-            import traceback
-            traceback.print_exc()
 
     def _on_content_resize(self, event):
         """Debounced resize of background image."""
@@ -3456,7 +3444,7 @@ class MachineSetupPage(ctk.CTkFrame):
         header_frame.pack(fill="x",  pady=(10, 5), padx=15)
 
         # Back Button
-        btn_back = ctk.CTkButton(
+        btn_back = ModernButton(
             header_frame,
             text="< Back",
             width=80,
@@ -3466,30 +3454,30 @@ class MachineSetupPage(ctk.CTkFrame):
         )
         btn_back.pack(side="left")
 
-        title = ctk.CTkLabel(header_frame, text="AirGauge Setup", font=("Times New Roman", 18, "bold"), text_color=("#1976D2", "#90CAF9"))
+        title = ctk.CTkLabel(header_frame, text="AirGauge Setup", font=("Segoe UI", 18, "bold"), text_color=("#1976D2", "#90CAF9"))
         title.pack(side="left", padx=20)
         
 
-        entry_frame = ctk.CTkFrame(self, fg_color=("#f5f7fa", "#2b2b2b"), corner_radius=8)
+        entry_frame = ModernCardFrame(self)
         entry_frame.pack(pady=10, padx=15, fill="x")
 
         # --- MAC entry ---
-        ctk.CTkLabel(entry_frame, text="IP Address:", font=("Times New Roman", 12)).grid(row=0, column=0, padx=10, pady=8, sticky="e")
+        ctk.CTkLabel(entry_frame, text="IP Address:", font=("Segoe UI", 11)).grid(row=0, column=0, padx=10, pady=8, sticky="e")
         self.mac_entry = ctk.CTkEntry(entry_frame, width=200)
         self.mac_entry.grid(row=0, column=1, padx=10, pady=8)
 
         # --- AirGauge ID entry ---
-        ctk.CTkLabel(entry_frame, text="AirGauge ID:", font=("Times New Roman", 12)).grid(row=0, column=2, padx=10, pady=8, sticky="e")
+        ctk.CTkLabel(entry_frame, text="AirGauge ID:", font=("Segoe UI", 11)).grid(row=0, column=2, padx=10, pady=8, sticky="e")
         self.id_entry = ctk.CTkEntry(entry_frame, width=200)
         self.id_entry.grid(row=0, column=3, padx=10, pady=8)
 
         # --- Buttons ---
-        add_btn = ctk.CTkButton(entry_frame, text="Add", fg_color="#43A047", hover_color="#388E3C", command=self.add_entry)
+        add_btn = ModernButton(entry_frame, text="Add", fg_color="#43A047", hover_color="#388E3C", command=self.add_entry)
         add_btn.grid(row=0, column=4, padx=10)
-        del_btn = ctk.CTkButton(entry_frame, text="Delete", fg_color="#E53935", hover_color="#C62828", command=self.delete_entry)
+        del_btn = ModernButton(entry_frame, text="Delete", fg_color="#E53935", hover_color="#C62828", command=self.delete_entry)
         del_btn.grid(row=0, column=5, padx=10)
         
-        sync_btn = ctk.CTkButton(entry_frame, text="🔄 Sync from Master", width=120, fg_color="#F57C00", hover_color="#EF6C00", command=self.sync_from_master)
+        sync_btn = ModernButton(entry_frame, text="🔄 Sync from Master", width=120, fg_color="#F57C00", hover_color="#EF6C00", command=self.sync_from_master)
         sync_btn.grid(row=0, column=6, padx=10)
         
         # --- Table ---
@@ -3500,7 +3488,7 @@ class MachineSetupPage(ctk.CTkFrame):
         header_frame = ctk.CTkFrame(self.table_frame, fg_color=("#E3F2FD", "#1565C0"))
         header_frame.pack(fill="x", pady=(0, 5))
         for i, h in enumerate(headers):
-            ctk.CTkLabel(header_frame, text=h, font=("Times New Roman", 12, "bold"), width=150, anchor="w", text_color=("black", "white")).grid(row=0, column=i, padx=20)
+            ctk.CTkLabel(header_frame, text=h, font=("Segoe UI", 11, "bold"), width=150, anchor="w", text_color=("black", "white")).grid(row=0, column=i, padx=20)
             
     def go_back(self, event=None):
         try:
@@ -3527,10 +3515,10 @@ class MachineSetupPage(ctk.CTkFrame):
             
             # Use a transparent button or bind events to labels to make row clickable
             # Using labels with bindings is easier for layout control
-            lbl_ip = ctk.CTkLabel(row, text=mac, font=("Times New Roman", 11), width=150, anchor="w")
+            lbl_ip = ctk.CTkLabel(row, text=mac, font=("Segoe UI", 11), width=150, anchor="w")
             lbl_ip.grid(row=0, column=0, padx=20, sticky="w")
             
-            lbl_id = ctk.CTkLabel(row, text=str(ag_id), font=("Times New Roman", 11), width=150, anchor="w")
+            lbl_id = ctk.CTkLabel(row, text=str(ag_id), font=("Segoe UI", 11), width=150, anchor="w")
             lbl_id.grid(row=0, column=1, padx=20, sticky="w")
             
             # Bind click to populate fields
@@ -3836,7 +3824,7 @@ class SettingsPage(ctk.CTkFrame):
         title = ctk.CTkLabel(
             self,
             text="⚙️  Settings",
-            font=("Times New Roman", 26, "bold"),
+            font=("Segoe UI", 24, "bold"),
             text_color="#1565C0"
         )
         title.pack(pady=(25, 15))
@@ -3873,7 +3861,7 @@ class SettingsPage(ctk.CTkFrame):
                 icon_label = ctk.CTkLabel(
                     card,
                     text=icon,
-                    font=("Times New Roman Emoji", 38),
+                    font=("Segoe UI", 24, "bold"),
                     text_color=("black", "white")
                 )
 
@@ -3882,7 +3870,7 @@ class SettingsPage(ctk.CTkFrame):
             text_label = ctk.CTkLabel(
                 card,
                 text=text,
-                font=("Times New Roman", 18, "bold"),
+                font=("Segoe UI", 18, "bold"),
                 text_color=("black", "white"),
                 wraplength=160  # Initial wrap length
             )
@@ -4002,7 +3990,7 @@ class ComponentSetupPage(ctk.CTkFrame):
             header = ctk.CTkFrame(self, fg_color=("#E3F2FD", "#1565C0"), corner_radius=0, height=50)
             header.pack(fill="x")
 
-            ctk.CTkButton(
+            ModernButton(
                 header,
                 text="⬅ Back",
                 width=80,
@@ -4015,17 +4003,17 @@ class ComponentSetupPage(ctk.CTkFrame):
             ctk.CTkLabel(
                 header,
                 text="⚙️ Component Setup",
-                font=("Times New Roman", 18, "bold"),
+                font=("Segoe UI", 18, "bold"),
                 text_color=("#1565C0", "#90CAF9")
             ).pack(side="left", padx=10)
 
 
             # ====== FORM CONTAINER ======
-            form_card = ctk.CTkFrame(self, fg_color="#FAFAFA", corner_radius=12)
+            form_card = ModernCardFrame(self)
             form_card.pack(padx=20, pady=(15, 10), fill="x")
 
             # --- AirGauge ID Selection (left) ---
-            ctk.CTkLabel(form_card, text="AirGauge ID:", font=("Times New Roman", 13), text_color="#37474F").grid(
+            ctk.CTkLabel(form_card, text="AirGauge ID:", font=("Segoe UI", 13), text_color="#37474F").grid(
                 row=0, column=0, padx=10, pady=10, sticky="e"
             )
             
@@ -4051,7 +4039,7 @@ class ComponentSetupPage(ctk.CTkFrame):
             self.id_dropdown.grid(row=0, column=1, padx=6, pady=10, sticky="w")
 
             # --- Item selection ComboBox (right of AirGauge ID) ---
-            ctk.CTkLabel(form_card, text="Item:", font=("Times New Roman", 13), text_color="#37474F").grid(
+            ctk.CTkLabel(form_card, text="Item:", font=("Segoe UI", 13), text_color="#37474F").grid(
                 row=0, column=1, padx=(260, 6), pady=10, sticky="w"
             )
             # Show "Name (Code)" in dropdown, but store code and name separately when saving
@@ -4076,7 +4064,7 @@ class ComponentSetupPage(ctk.CTkFrame):
                 # fallback: user can still drop down and pick from list
                 pass
             # --- Customer selection ComboBox (right of Item) ---
-            ctk.CTkLabel(form_card, text="Customer:", font=("Times New Roman", 13), text_color="#37474F").grid(
+            ctk.CTkLabel(form_card, text="Customer:", font=("Segoe UI", 13), text_color="#37474F").grid(
                 row=0, column=1, padx=(500, 6), pady=10, sticky="w"
             )
 
@@ -4101,7 +4089,7 @@ class ComponentSetupPage(ctk.CTkFrame):
 
 
             # --- Type Selection (Shaft/Hole) ---
-            ctk.CTkLabel(form_card, text="Type:", font=("Times New Roman", 13), text_color="#37474F").grid(
+            ctk.CTkLabel(form_card, text="Type:", font=("Segoe UI", 13), text_color="#37474F").grid(
                 row=1, column=0, padx=10, pady=10, sticky="e"
             )
             type_inner_frame = ctk.CTkFrame(form_card, fg_color="transparent")
@@ -4117,7 +4105,7 @@ class ComponentSetupPage(ctk.CTkFrame):
             ).pack(side="left", padx=5)
 
             # --- Channel Selection ---
-            ctk.CTkLabel(form_card, text="Select Channel:", font=("Times New Roman", 13), text_color="#37474F").grid(
+            ctk.CTkLabel(form_card, text="Select Channel:", font=("Segoe UI", 13), text_color="#37474F").grid(
                 row=2, column=0, padx=10, pady=10, sticky="e"
             )
             ch_frame = ctk.CTkFrame(form_card, fg_color="#FAFAFA")
@@ -4143,7 +4131,7 @@ class ComponentSetupPage(ctk.CTkFrame):
             ]
 
             for i, (label, key) in enumerate(entries, start=4):
-                ctk.CTkLabel(form_card, text=label, font=("Times New Roman", 13), text_color="#37474F").grid(
+                ctk.CTkLabel(form_card, text=label, font=("Segoe UI", 13), text_color="#37474F").grid(
                     row=i, column=0, padx=10, pady=8, sticky="e"
                 )
                 var = ctk.StringVar()
@@ -4194,28 +4182,28 @@ class ComponentSetupPage(ctk.CTkFrame):
             # ====== BUTTON ROW ======
             btn_frame = ctk.CTkFrame(self, fg_color="transparent")
             btn_frame.pack(pady=(10, 5))
-            ctk.CTkButton(btn_frame, text="💾 Save Setup",
+            ModernButton(btn_frame, text="💾 Save Setup",
                           fg_color="#43A047", hover_color="#388E3C",
                           height=38, width=160, command=self.save_data).pack(side="left", padx=10)
-            self.delete_btn = ctk.CTkButton(btn_frame, text="🗑 Delete Selected",
+            self.delete_btn = ModernButton(btn_frame, text="🗑 Delete Selected",
                                             fg_color="#E53935", hover_color="#C62828",
                                             height=38, width=160, state="disabled",
                                             command=self.delete_selected)
             self.delete_btn.pack(side="left", padx=10)
 
             # --- Temporary Status Label ---
-            self.status_label = ctk.CTkLabel(self, text="", font=("Times New Roman", 12),
+            self.status_label = ctk.CTkLabel(self, text="", font=("Segoe UI", 11),
                                              text_color="#43A047")
             self.status_label.pack(pady=(0, 5))
 
             # ====== TABLE ======
-            table_frame = ctk.CTkFrame(self)
+            table_frame = ModernCardFrame(self)
             table_frame.pack(fill="both", expand=True, padx=20, pady=(5, 15))
 
             ctk.CTkLabel(
                 table_frame,
                 text="📋 Saved Component Configurations",
-                font=("Times New Roman", 14, "bold"),
+                font=("Segoe UI", 13, "bold"),
                 text_color="#1565C0"
             ).pack(pady=5)
 
@@ -4224,7 +4212,7 @@ class ComponentSetupPage(ctk.CTkFrame):
             style.theme_use("default")
             style.configure(
                 "Component.Treeview",
-                font=("Times New Roman", 11),
+                font=("Segoe UI", 11),
                 rowheight=28,
                 background="white",
                 foreground="#212121",
@@ -4233,7 +4221,7 @@ class ComponentSetupPage(ctk.CTkFrame):
             )
             style.configure(
                 "Component.Treeview.Heading",
-                font=("Times New Roman", 12, "bold"),
+                font=("Segoe UI", 11, "bold"),
                 background="#1565C0",
                 foreground="white",
                 borderwidth=0,
@@ -4929,7 +4917,7 @@ class MachineMasterPage(ctk.CTkFrame):
         header.pack(fill="x", side="top")
         
 
-        ctk.CTkButton(
+        ModernButton(
                 header,
                 text="⬅ Back",
                 width=80,
@@ -4941,12 +4929,12 @@ class MachineMasterPage(ctk.CTkFrame):
         ctk.CTkLabel(
             header,
             text="🏭 Machine Master",
-            font=("Georgia", 16, "bold"),
+            font=("Segoe UI", 18, "bold"),
             text_color=("#1565C0", "#90CAF9"),
         ).pack(padx=12, pady=10, anchor="w")
 
         # FORM
-        add_frame = ctk.CTkFrame(self, fg_color=("white", "#2b2b2b"))
+        add_frame = ModernCardFrame(self)
         add_frame.pack(fill="x", padx=20, pady=(10, 6))
 
         LABEL_WIDTH = 100
@@ -4976,7 +4964,7 @@ class MachineMasterPage(ctk.CTkFrame):
         btn_frame = ctk.CTkFrame(add_frame, fg_color="transparent")
         btn_frame.grid(row=2, column=0, columnspan=2, sticky="w", pady=(6, 10))
 
-        self.action_btn = ctk.CTkButton(
+        self.action_btn = ModernButton(
             btn_frame,
             text="➕ Add Machine",
             width=150,
@@ -4986,7 +4974,7 @@ class MachineMasterPage(ctk.CTkFrame):
         )
         self.action_btn.pack(side="left", padx=(0, 15))
 
-        del_btn = ctk.CTkButton(
+        del_btn = ModernButton(
             btn_frame,
             text="🗑 Delete Selected",
             width=150,
@@ -5081,7 +5069,7 @@ class MachineMasterPage(ctk.CTkFrame):
             except:
                 pass
 
-            self.resize_sheet = lambda *a, **k: None
+            self.resize_sheet = make_sheet_auto_resize(self.sheet, table_card, cols)
 
         else:
             # --------------------------------------------------
@@ -5295,19 +5283,19 @@ class MachineMasterPage(ctk.CTkFrame):
         frm = ctk.CTkFrame(win)
         frm.pack(fill="both", expand=True, padx=12, pady=12)
 
-        ctk.CTkLabel(frm, text="Code:", font=("Times New Roman", 12)).grid(
+        ctk.CTkLabel(frm, text="Code:", font=("Segoe UI", 11)).grid(
             row=0, column=0, sticky="w", padx=6, pady=6
         )
         code_e = ctk.CTkEntry(frm, width=300)
         code_e.grid(row=0, column=1, sticky="w", padx=6, pady=6)
 
-        ctk.CTkLabel(frm, text="Name:", font=("Times New Roman", 12)).grid(
+        ctk.CTkLabel(frm, text="Name:", font=("Segoe UI", 11)).grid(
             row=1, column=0, sticky="w", padx=6, pady=6
         )
         name_e = ctk.CTkEntry(frm, width=420)
         name_e.grid(row=1, column=1, sticky="w", padx=6, pady=6)
 
-        ctk.CTkLabel(frm, text="Description:", font=("Times New Roman", 12)).grid(
+        ctk.CTkLabel(frm, text="Description:", font=("Segoe UI", 11)).grid(
             row=2, column=0, sticky="w", padx=6, pady=6
         )
         desc_e = ctk.CTkEntry(frm, width=420)
@@ -5368,10 +5356,10 @@ class MachineMasterPage(ctk.CTkFrame):
             self.refresh_table()
             win.destroy()
 
-        ctk.CTkButton(btnf, text="Save", fg_color="#43A047", command=save_btn).pack(
+        ModernButton(btnf, text="Save", fg_color="#43A047", command=save_btn).pack(
             side="left", padx=8
         )
-        ctk.CTkButton(btnf, text="Cancel", fg_color="#E53935", command=win.destroy).pack(
+        ModernButton(btnf, text="Cancel", fg_color="#E53935", command=win.destroy).pack(
             side="left", padx=8
         )
 
@@ -5541,7 +5529,7 @@ class ItemMasterPage(ctk.CTkFrame):
         # Header
         header = ctk.CTkFrame(self, fg_color=("#E3F2FD", "#1565C0"), height=56, corner_radius=0)
         header.pack(fill="x", side="top")
-        ctk.CTkButton(
+        ModernButton(
                 header,
                 text="⬅ Back",
                 width=80,
@@ -5551,11 +5539,11 @@ class ItemMasterPage(ctk.CTkFrame):
             ).pack(side="left", padx=10, pady=8)
 
          
-        ctk.CTkLabel(header, text="📦 Item Master", font=("Georgia", 16, "bold"),
+        ctk.CTkLabel(header, text="📦 Item Master", font=("Segoe UI", 18, "bold"),
                      text_color=("#1565C0", "#90CAF9")).pack(padx=12, pady=10, anchor="w")
 
         # Form frame
-        add_frame = ctk.CTkFrame(self, fg_color=("white", "#2b2b2b"))
+        add_frame = ModernCardFrame(self)
         add_frame.pack(fill="x", padx=20, pady=(10, 6))
 
         LABEL_WIDTH = 100
@@ -5583,17 +5571,17 @@ class ItemMasterPage(ctk.CTkFrame):
         btn_frame = ctk.CTkFrame(add_frame, fg_color="transparent")
         btn_frame.grid(row=2, column=0, columnspan=2, sticky="w", pady=(6, 10))
 
-        self.action_btn = ctk.CTkButton(btn_frame, text="➕ Add Item", width=140, fg_color="#43A047",
+        self.action_btn = ModernButton(btn_frame, text="➕ Add Item", width=140, fg_color="#43A047",
                                        hover_color="#388E3C", command=self._on_action_clicked)
         self.action_btn.pack(side="left", padx=(0, 10))
 
-        del_btn = ctk.CTkButton(btn_frame, text="🗑 Delete Selected", width=150, fg_color="#E53935",
+        del_btn = ModernButton(btn_frame, text="🗑 Delete Selected", width=150, fg_color="#E53935",
                                 hover_color="#C62828", command=self._delete_selected)
         del_btn.pack(side="left")
 
 
         # Table area
-        table_card = ctk.CTkFrame(self, corner_radius=8, border_width=1, border_color="#E0E0E0")
+        table_card = ModernCardFrame(self)
         table_card.pack(fill="both", expand=True, padx=12, pady=(6, 12))
         table_card.grid_rowconfigure(0, weight=1)
         table_card.grid_columnconfigure(0, weight=1)
@@ -5670,7 +5658,7 @@ class ItemMasterPage(ctk.CTkFrame):
                 self.resize_sheet = resize_sheet
 
 
-            self.resize_sheet = lambda *args, **kwargs: None
+            self.resize_sheet = make_sheet_auto_resize(self.sheet, table_card, cols)
             
         else:
             # Treeview fallback
@@ -5880,16 +5868,16 @@ class ItemMasterPage(ctk.CTkFrame):
         frm = ctk.CTkFrame(win)
         frm.pack(fill="both", expand=True, padx=12, pady=12)
 
-        ctk.CTkLabel(frm, text="Item Code:", font=("Times New Roman", 12)).grid(row=0, column=0, sticky="w", padx=6, pady=6)
+        ctk.CTkLabel(frm, text="Item Code:", font=("Segoe UI", 11)).grid(row=0, column=0, sticky="w", padx=6, pady=6)
         code_e = ctk.CTkEntry(frm, width=300); code_e.grid(row=0, column=1, sticky="w", padx=6, pady=6)
 
-        ctk.CTkLabel(frm, text="Item Name:", font=("Times New Roman", 12)).grid(row=1, column=0, sticky="w", padx=6, pady=6)
+        ctk.CTkLabel(frm, text="Item Name:", font=("Segoe UI", 11)).grid(row=1, column=0, sticky="w", padx=6, pady=6)
         name_e = ctk.CTkEntry(frm, width=420); name_e.grid(row=1, column=1, sticky="w", padx=6, pady=6)
 
-        ctk.CTkLabel(frm, text="Drawing No:", font=("Times New Roman", 12)).grid(row=2, column=0, sticky="w", padx=6, pady=6)
+        ctk.CTkLabel(frm, text="Drawing No:", font=("Segoe UI", 11)).grid(row=2, column=0, sticky="w", padx=6, pady=6)
         drawing_e = ctk.CTkEntry(frm, width=300); drawing_e.grid(row=2, column=1, sticky="w", padx=6, pady=6)
 
-        ctk.CTkLabel(frm, text="Revision No:", font=("Times New Roman", 12)).grid(row=3, column=0, sticky="w", padx=6, pady=6)
+        ctk.CTkLabel(frm, text="Revision No:", font=("Segoe UI", 11)).grid(row=3, column=0, sticky="w", padx=6, pady=6)
         revision_e = ctk.CTkEntry(frm, width=180); revision_e.grid(row=3, column=1, sticky="w", padx=6, pady=6)
 
         if mode == "edit" and index is not None:
@@ -5943,8 +5931,8 @@ class ItemMasterPage(ctk.CTkFrame):
             self.refresh_table()
             win.destroy()
 
-        ctk.CTkButton(btnf, text="Save", fg_color="#43A047", command=on_save).pack(side="left", padx=8)
-        ctk.CTkButton(btnf, text="Cancel", fg_color="#E53935", command=win.destroy).pack(side="left", padx=8)
+        ModernButton(btnf, text="Save", fg_color="#43A047", command=on_save).pack(side="left", padx=8)
+        ModernButton(btnf, text="Cancel", fg_color="#E53935", command=win.destroy).pack(side="left", padx=8)
 
     # -------------------------
     # Animations (tksheet)
@@ -6102,7 +6090,7 @@ class ProcessMasterPage(ctk.CTkFrame):
         header = ctk.CTkFrame(self, fg_color=("#E3F2FD", "#1565C0"), height=56, corner_radius=0)
         header.pack(fill="x", side="top")
 
-        ctk.CTkButton(
+        ModernButton(
                 header,
                 text="⬅ Back",
                 width=80,
@@ -6114,12 +6102,12 @@ class ProcessMasterPage(ctk.CTkFrame):
         ctk.CTkLabel(
             header,
             text="🏭 Process Master",
-            font=("Georgia", 16, "bold"),
+            font=("Segoe UI", 18, "bold"),
             text_color=("#1565C0", "#90CAF9"),
         ).pack(padx=12, pady=10, anchor="w")
 
         # Form
-        add_frame = ctk.CTkFrame(self, fg_color=("white", "#2b2b2b"))
+        add_frame = ModernCardFrame(self)
         add_frame.pack(fill="x", padx=20, pady=(10, 6))
 
         LABEL_WIDTH = 100
@@ -6149,7 +6137,7 @@ class ProcessMasterPage(ctk.CTkFrame):
         btn_frame = ctk.CTkFrame(add_frame, fg_color="transparent")
         btn_frame.grid(row=2, column=0, columnspan=2, sticky="w", pady=(6, 10))
 
-        self.action_btn = ctk.CTkButton(
+        self.action_btn = ModernButton(
             btn_frame,
             text="➕ Add Process",
             width=140,
@@ -6159,7 +6147,7 @@ class ProcessMasterPage(ctk.CTkFrame):
         )
         self.action_btn.pack(side="left", padx=(0, 10))
 
-        del_btn = ctk.CTkButton(
+        del_btn = ModernButton(
             btn_frame,
             text="🗑 Delete Selected",
             width=150,
@@ -6250,7 +6238,7 @@ class ProcessMasterPage(ctk.CTkFrame):
                 pass
 
             # no auto resize
-            self.resize_sheet = lambda *a, **k: None
+            self.resize_sheet = make_sheet_auto_resize(self.sheet, table_card, cols)
 
         else:
             # TreeView fallback
@@ -6467,19 +6455,19 @@ class ProcessMasterPage(ctk.CTkFrame):
         frm = ctk.CTkFrame(win)
         frm.pack(fill="both", expand=True, padx=12, pady=12)
 
-        ctk.CTkLabel(frm, text="Code:", font=("Times New Roman", 12)).grid(
+        ctk.CTkLabel(frm, text="Code:", font=("Segoe UI", 11)).grid(
             row=0, column=0, sticky="w", padx=6, pady=6
         )
         code_e = ctk.CTkEntry(frm, width=300)
         code_e.grid(row=0, column=1, sticky="w", padx=6, pady=6)
 
-        ctk.CTkLabel(frm, text="Name:", font=("Times New Roman", 12)).grid(
+        ctk.CTkLabel(frm, text="Name:", font=("Segoe UI", 11)).grid(
             row=1, column=0, sticky="w", padx=6, pady=6
         )
         name_e = ctk.CTkEntry(frm, width=420)
         name_e.grid(row=1, column=1, sticky="w", padx=6, pady=6)
 
-        ctk.CTkLabel(frm, text="Description:", font=("Times New Roman", 12)).grid(
+        ctk.CTkLabel(frm, text="Description:", font=("Segoe UI", 11)).grid(
             row=2, column=0, sticky="w", padx=6, pady=6
         )
         desc_e = ctk.CTkEntry(frm, width=420)
@@ -6538,10 +6526,10 @@ class ProcessMasterPage(ctk.CTkFrame):
             self.refresh_table()
             win.destroy()
 
-        ctk.CTkButton(btnf, text="Save", fg_color="#43A047", command=save_popup).pack(
+        ModernButton(btnf, text="Save", fg_color="#43A047", command=save_popup).pack(
             side="left", padx=8
         )
-        ctk.CTkButton(btnf, text="Cancel", fg_color="#E53935", command=win.destroy).pack(
+        ModernButton(btnf, text="Cancel", fg_color="#E53935", command=win.destroy).pack(
             side="left", padx=8
         )
 
@@ -6714,7 +6702,7 @@ class OperatorManagerPage(ctk.CTkFrame):
 
         header.pack(fill="x", side="top")
 
-        ctk.CTkButton(
+        ModernButton(
                 header,
                 text="⬅ Back",
                 width=80,
@@ -6724,7 +6712,7 @@ class OperatorManagerPage(ctk.CTkFrame):
             ).pack(side="left", padx=10, pady=8)
         
         ctk.CTkLabel(header, text="👷  Employee Master",
-                     font=("Georgia", 18, "bold"),
+                     font=("Segoe UI", 18, "bold"),
                      text_color=("#1565C0", "#90CAF9")).pack(padx=18, pady=12, anchor="w")
 
         # Content - main area (this will expand)
@@ -6732,7 +6720,7 @@ class OperatorManagerPage(ctk.CTkFrame):
         content.pack(fill="both", expand=True, padx=12, pady=10)
 
         # Top area: use grid so description can expand while left inputs are fixed-width
-        top_frame = ctk.CTkFrame(content, fg_color="transparent")
+        top_frame = ModernCardFrame(content)
         # fill horizontally, but allow children layout to determine heights
         top_frame.pack(fill="x", pady=(0, 12), anchor="n")
 
@@ -6745,22 +6733,22 @@ class OperatorManagerPage(ctk.CTkFrame):
         left_inputs.grid(row=0, column=0, sticky="nw")
 
         # Operator ID
-        ctk.CTkLabel(left_inputs, text="Operator ID:", font=("Times New Roman", 12), text_color=("#37474F", "white")).grid(row=0, column=0, sticky="w", padx=(4, 8), pady=(2, 6))
+        ctk.CTkLabel(left_inputs, text="Operator ID:", font=("Segoe UI", 11), text_color=("#37474F", "white")).grid(row=0, column=0, sticky="w", padx=(4, 8), pady=(2, 6))
         self.id_entry = ctk.CTkEntry(left_inputs, width=220)
         self.id_entry.grid(row=0, column=1, sticky="w", padx=4, pady=(2, 6))
 
         # Name
-        ctk.CTkLabel(left_inputs, text="Name:", font=("Times New Roman", 12), text_color=("#37474F", "white")).grid(row=1, column=0, sticky="w", padx=(4, 8), pady=(2, 6))
+        ctk.CTkLabel(left_inputs, text="Name:", font=("Segoe UI", 11), text_color=("#37474F", "white")).grid(row=1, column=0, sticky="w", padx=(4, 8), pady=(2, 6))
         self.name_entry = ctk.CTkEntry(left_inputs, width=220)
         self.name_entry.grid(row=1, column=1, sticky="w", padx=4, pady=(2, 6))
 
         # Phone
-        ctk.CTkLabel(left_inputs, text="Phone (optional):", font=("Times New Roman", 12), text_color=("#37474F", "white")).grid(row=2, column=0, sticky="w", padx=(4, 8), pady=(2, 6))
+        ctk.CTkLabel(left_inputs, text="Phone (optional):", font=("Segoe UI", 11), text_color=("#37474F", "white")).grid(row=2, column=0, sticky="w", padx=(4, 8), pady=(2, 6))
         self.phone_entry = ctk.CTkEntry(left_inputs, width=220)
         self.phone_entry.grid(row=2, column=1, sticky="w", padx=4, pady=(2, 6))
 
         # Add / Update button
-        self.action_btn = ctk.CTkButton(
+        self.action_btn = ModernButton(
             left_inputs,
             text="➕  Add Operator",
             width=160,
@@ -6769,7 +6757,7 @@ class OperatorManagerPage(ctk.CTkFrame):
         self.action_btn.grid(row=6, column=0, sticky="w", padx=(4, 6), pady=(8, 4))
 
         # Delete button next to Add button
-        self.del_btn = ctk.CTkButton(
+        self.del_btn = ModernButton(
             left_inputs,
             text="🗑  Delete",
             width=120,
@@ -6790,7 +6778,7 @@ class OperatorManagerPage(ctk.CTkFrame):
         right_frame.grid_columnconfigure(0, weight=0)
         right_frame.grid_rowconfigure(1, weight=0)
 
-        ctk.CTkLabel(right_frame, text="Description:", font=("Times New Roman", 12), text_color="#37474F").grid(
+        ctk.CTkLabel(right_frame, text="Description:", font=("Segoe UI", 11), text_color="#37474F").grid(
             row=0, column=0, sticky="nw", padx=4, pady=(2, 6)
         )
 
@@ -6812,13 +6800,13 @@ class OperatorManagerPage(ctk.CTkFrame):
             wrap="word",
             relief="flat",
             bd=0,
-            font=("Times New Roman", 11)
+            font=("Segoe UI", 11)
         )
         self.desc_text.pack(padx=6, pady=6)
 
 
         # Table area container: grid so scrollbars and table share space nicely
-        table_container = ctk.CTkFrame(content)
+        table_container = ModernCardFrame(content)
         table_container.pack(fill="both", expand=True)
         # configure grid so widget inside can expand
         table_container.grid_rowconfigure(0, weight=1)
@@ -7286,16 +7274,16 @@ class OperatorManagerPage(ctk.CTkFrame):
         frame = ctk.CTkFrame(win)
         frame.pack(fill="both", expand=True, padx=12, pady=12)
 
-        ctk.CTkLabel(frame, text="Operator ID:", font=("Times New Roman", 12)).grid(row=0, column=0, sticky="e", padx=6, pady=8)
+        ctk.CTkLabel(frame, text="Operator ID:", font=("Segoe UI", 11)).grid(row=0, column=0, sticky="e", padx=6, pady=8)
         id_e = ctk.CTkEntry(frame, width=320); id_e.grid(row=0, column=1, sticky="w", padx=6, pady=8)
 
-        ctk.CTkLabel(frame, text="Name:", font=("Times New Roman", 12)).grid(row=1, column=0, sticky="e", padx=6, pady=8)
+        ctk.CTkLabel(frame, text="Name:", font=("Segoe UI", 11)).grid(row=1, column=0, sticky="e", padx=6, pady=8)
         name_e = ctk.CTkEntry(frame, width=320); name_e.grid(row=1, column=1, sticky="w", padx=6, pady=8)
 
-        ctk.CTkLabel(frame, text="Description:", font=("Times New Roman", 12)).grid(row=2, column=0, sticky="ne", padx=6, pady=8)
+        ctk.CTkLabel(frame, text="Description:", font=("Segoe UI", 11)).grid(row=2, column=0, sticky="ne", padx=6, pady=8)
         desc_t = tk.Text(frame, width=36, height=6, bg="white", fg="black"); desc_t.grid(row=2, column=1, sticky="w", padx=6, pady=8)
 
-        ctk.CTkLabel(frame, text="Phone (optional):", font=("Times New Roman", 12)).grid(row=3, column=0, sticky="e", padx=6, pady=8)
+        ctk.CTkLabel(frame, text="Phone (optional):", font=("Segoe UI", 11)).grid(row=3, column=0, sticky="e", padx=6, pady=8)
         phone_e = ctk.CTkEntry(frame, width=320); phone_e.grid(row=3, column=1, sticky="w", padx=6, pady=8)
 
         if mode == "edit" and index is not None:
@@ -7356,8 +7344,8 @@ class OperatorManagerPage(ctk.CTkFrame):
             # self.save_operators() # This was removed as DB operations handle persistence
             win.destroy()
 
-        ctk.CTkButton(btnf, text="Save", fg_color="#43A047", command=on_save_clicked).pack(side="left", padx=8)
-        ctk.CTkButton(btnf, text="Cancel", fg_color="#E53935", command=win.destroy).pack(side="left", padx=8)
+        ModernButton(btnf, text="Save", fg_color="#43A047", command=on_save_clicked).pack(side="left", padx=8)
+        ModernButton(btnf, text="Cancel", fg_color="#E53935", command=win.destroy).pack(side="left", padx=8)
 
     # -----------------------
     # Utilities
@@ -7471,7 +7459,7 @@ class CustomerMasterPage(ctk.CTkFrame):
         header = ctk.CTkFrame(self, fg_color=("#E3F2FD", "#1565C0"), height=56, corner_radius=0)
         header.pack(fill="x", side="top")
 
-        ctk.CTkButton(
+        ModernButton(
                 header,
                 text="⬅ Back",
                 width=80,
@@ -7482,43 +7470,43 @@ class CustomerMasterPage(ctk.CTkFrame):
 
         # Title
         ctk.CTkLabel(header, text="🏷️ Customer Master",
-                     font=("Georgia", 16, "bold"), text_color=("#1565C0", "#90CAF9")).pack(
+                     font=("Segoe UI", 18, "bold"), text_color=("#1565C0", "#90CAF9")).pack(
             padx=12, pady=10, anchor="w"
         )
 
 
     
         # Fixed professional form grid
-        add_frame = ctk.CTkFrame(self, fg_color=("white", "#2b2b2b"))
+        add_frame = ModernCardFrame(self)
         add_frame.pack(fill="x", padx=20, pady=(10, 6))
 
         LABEL_WIDTH = 90
         ENTRY_WIDTH = 220
 
         # ROW 0: Code + Email
-        ctk.CTkLabel(add_frame, text="Code:", font=("Times New Roman", 12),
+        ctk.CTkLabel(add_frame, text="Code:", font=("Segoe UI", 11),
                      width=LABEL_WIDTH, anchor="w", text_color=("#37474F", "white")).grid(row=0, column=0, sticky="w", pady=6)
         self.code_e = ctk.CTkEntry(add_frame, width=ENTRY_WIDTH)
         self.code_e.grid(row=0, column=1, sticky="w", padx=(10, 30))
 
-        ctk.CTkLabel(add_frame, text="Email:", font=("Times New Roman", 12),
+        ctk.CTkLabel(add_frame, text="Email:", font=("Segoe UI", 11),
                      width=LABEL_WIDTH, anchor="e", text_color=("#37474F", "white")).grid(row=0, column=2, sticky="e", padx=(0, 10), pady=6)
         self.email_e = ctk.CTkEntry(add_frame, width=ENTRY_WIDTH)
         self.email_e.grid(row=0, column=3, sticky="w", padx=(10, 0))
 
         # ROW 1: Customer Name + Phone
-        ctk.CTkLabel(add_frame, text="Customer Name:", font=("Times New Roman", 12),
+        ctk.CTkLabel(add_frame, text="Customer Name:", font=("Segoe UI", 11),
                      width=LABEL_WIDTH, anchor="w", text_color=("#37474F", "white")).grid(row=1, column=0, sticky="w", pady=6)
         self.name_e = ctk.CTkEntry(add_frame, width=ENTRY_WIDTH)
         self.name_e.grid(row=1, column=1, sticky="w", padx=(10, 30))
 
-        ctk.CTkLabel(add_frame, text="Phone:", font=("Times New Roman", 12),
+        ctk.CTkLabel(add_frame, text="Phone:", font=("Segoe UI", 11),
                      width=LABEL_WIDTH, anchor="e", text_color=("#37474F", "white")).grid(row=1, column=2, sticky="e", padx=(0, 10), pady=6)
         self.phone_e = ctk.CTkEntry(add_frame, width=ENTRY_WIDTH)
         self.phone_e.grid(row=1, column=3, sticky="w", padx=(10, 0))
 
         # ROW 2: Description (single-line long entry spanning right columns)
-        ctk.CTkLabel(add_frame, text="Description:", font=("Times New Roman", 12),
+        ctk.CTkLabel(add_frame, text="Description:", font=("Segoe UI", 11),
                      width=LABEL_WIDTH, anchor="w", text_color=("#37474F", "white")).grid(row=2, column=0, sticky="w", pady=(6, 6))
         # long single-line entry spanning columns 1..3
         self.desc_e = ctk.CTkEntry(add_frame, width=(ENTRY_WIDTH * 2 + 255))
@@ -7529,13 +7517,13 @@ class CustomerMasterPage(ctk.CTkFrame):
         btn_frame.grid(row=3, column=0, columnspan=2, sticky="w", pady=(0, 10))
 
         # Add / Update dynamic action button
-        self.action_btn = ctk.CTkButton(btn_frame, text="➕ Add Customer",
+        self.action_btn = ModernButton(btn_frame, text="➕ Add Customer",
                                        fg_color="#43A047", hover_color="#388E3C",
                                        width=140, command=self._on_action_clicked)
         self.action_btn.pack(side="left", padx=(0, 10))
 
         # Delete selected (left)
-        del_btn = ctk.CTkButton(btn_frame, text="🗑 Delete Selected",
+        del_btn = ModernButton(btn_frame, text="🗑 Delete Selected",
                                 fg_color="#E53935", hover_color="#C62828",
                                 width=150, command=self._delete_selected)
         del_btn.pack(side="left")
@@ -7546,13 +7534,13 @@ class CustomerMasterPage(ctk.CTkFrame):
         # Search area
         search_frame = ctk.CTkFrame(add_frame, fg_color="transparent")
         search_frame.grid(row=3, column=2, sticky="e", padx=(0, 8))
-        ctk.CTkLabel(search_frame, text="Search:", font=("Times New Roman", 12), text_color=("#37474F", "white")).pack(side="left", padx=(6, 4))
+        ctk.CTkLabel(search_frame, text="Search:", font=("Segoe UI", 11), text_color=("#37474F", "white")).pack(side="left", padx=(6, 4))
         search_e = ctk.CTkEntry(search_frame, textvariable=self.search_var, width=250)
         search_e.pack(side="left")
         search_e.bind("<KeyRelease>", lambda e: self.refresh_table())
 
         # Table area
-        table_card = ctk.CTkFrame(self, corner_radius=8, border_width=1, border_color=("#E0E0E0", "#424242"))
+        table_card = ModernCardFrame(self)
         table_card.pack(fill="both", expand=True, padx=12, pady=(6, 12))
         table_card.grid_rowconfigure(0, weight=1)
         table_card.grid_columnconfigure(0, weight=1)
@@ -8004,27 +7992,27 @@ class CustomerMasterPage(ctk.CTkFrame):
         frame.pack(fill="both", expand=True, padx=12, pady=12)
 
         # Code (row 0)
-        ctk.CTkLabel(frame, text="Code:", font=("Times New Roman", 12)).grid(row=0, column=0, sticky="w", padx=6, pady=8)
+        ctk.CTkLabel(frame, text="Code:", font=("Segoe UI", 11)).grid(row=0, column=0, sticky="w", padx=6, pady=8)
         code_e = ctk.CTkEntry(frame, width=250)
         code_e.grid(row=0, column=1, sticky="w", padx=(2,0), pady=8)
 
         # customer Name (row 1)        
-        ctk.CTkLabel(frame, text="Customer Name:", font=("Times New Roman", 12)).grid(row=0, column=2, sticky="w", padx=(0,6), pady=8)
+        ctk.CTkLabel(frame, text="Customer Name:", font=("Segoe UI", 11)).grid(row=0, column=2, sticky="w", padx=(0,6), pady=8)
         name_e = ctk.CTkEntry(frame, width=250)
         name_e.grid(row=0, column=3, sticky="w", padx=6, pady=8)
 
         # Description (row 2)
-        ctk.CTkLabel(frame, text="Description:", font=("Times New Roman", 12)).grid(row=2, column=0, sticky="nw", padx=6, pady=8)
+        ctk.CTkLabel(frame, text="Description:", font=("Segoe UI", 11)).grid(row=2, column=0, sticky="nw", padx=6, pady=8)
         desc_e = ctk.CTkEntry(frame, width=495)
         desc_e.grid(row=2, column=1, columnspan=3, sticky="w", padx=6, pady=8)
         
         # Email (row 3)
-        ctk.CTkLabel(frame, text="Email:", font=("Times New Roman", 12)).grid(row=3, column=0, sticky="w", padx=6, pady=8)
+        ctk.CTkLabel(frame, text="Email:", font=("Segoe UI", 11)).grid(row=3, column=0, sticky="w", padx=6, pady=8)
         email_e = ctk.CTkEntry(frame, width=300)
         email_e.grid(row=3, column=1, sticky="w", padx=6, pady=8)
 
         # Phone (row 4)
-        ctk.CTkLabel(frame, text="Phone:", font=("Times New Roman", 12)).grid(row=4, column=0, sticky="w", padx=6, pady=8)
+        ctk.CTkLabel(frame, text="Phone:", font=("Segoe UI", 11)).grid(row=4, column=0, sticky="w", padx=6, pady=8)
         phone_e = ctk.CTkEntry(frame, width=200)
         phone_e.grid(row=4, column=1, sticky="w", padx=6, pady=8)
         
@@ -8094,8 +8082,8 @@ class CustomerMasterPage(ctk.CTkFrame):
             self.refresh_table()
             win.destroy()
 
-        ctk.CTkButton(btnf, text="Save", fg_color="#43A047", command=on_save_clicked).pack(side="left", padx=8)
-        ctk.CTkButton(btnf, text="Cancel", fg_color="#43A047", command=win.destroy).pack(side="left", padx=8)
+        ModernButton(btnf, text="Save", fg_color="#43A047", command=on_save_clicked).pack(side="left", padx=8)
+        ModernButton(btnf, text="Cancel", fg_color="#43A047", command=win.destroy).pack(side="left", padx=8)
 
     def _clear_inputs(self):
         try:
@@ -8224,7 +8212,7 @@ class RunChatPage(ctk.CTkFrame):
         self.scrollable_frame.grid_columnconfigure(0, weight=1)
         self.scrollable_frame.grid_columnconfigure(1, weight=1)
 
-        self.add_button = tk.Button(self.scrollable_frame, text="+", font=("Arial", 16, "bold"),
+        self.add_button = ModernButton(self.scrollable_frame, text="+", font=("Segoe UI", 18, "bold"),
                                     width=5, command=self.add_chart)
         self.add_button.grid(row=0, column=0, columnspan=2, pady=10, sticky="ew")
 
@@ -8479,14 +8467,14 @@ class RunChatPage(ctk.CTkFrame):
                     pass
 
         # --- AirGauge selector (left side)
-        tk.Label(control, text="AirGauge:", bg="#f8f9fa", font=("Times New Roman", 10)).pack(side="left", padx=(8, 0))
+        tk.Label(control, text="AirGauge:", bg="#f8f9fa", font=("Segoe UI", 11)).pack(side="left", padx=(8, 0))
         air_var = tk.StringVar()
         air_box = ttk.Combobox(control, textvariable=air_var,
                                values=sorted(list(self.comp_map.keys())), state="readonly", width=12)
         air_box.pack(side="left", padx=(5, 10))
 
         # --- Channel selector ---
-        tk.Label(control, text="Channel:", bg="#f8f9fa", font=("Times New Roman", 10)).pack(side="left", padx=(5, 0))
+        tk.Label(control, text="Channel:", bg="#f8f9fa", font=("Segoe UI", 11)).pack(side="left", padx=(5, 0))
         ch_var = tk.StringVar()
         ch_box = ttk.Combobox(control, textvariable=ch_var,
                               values=[], state="readonly", width=8)
@@ -8498,28 +8486,28 @@ class RunChatPage(ctk.CTkFrame):
         val_frame.pack(side="left", padx=(15, 5))
         latest_var = tk.StringVar(value="--")
         latest_label = tk.Label(val_frame, textvariable=latest_var, bg="#fff",
-                                fg="navy", font=("Times New Roman", 15, "bold"), width=10)
+                                fg="navy", font=("Segoe UI", 13, "bold"), width=10)
         latest_label.pack(padx=3, pady=2)
 
         # --- Spacer (to push buttons to right) ---
         tk.Label(control, text="", bg="#f8f9fa").pack(side="left", expand=True)
 
         # --- Buttons (rightmost side) ---
-        expand_btn = tk.Button(control, text="🗖", font=("Times New Roman", 10, "bold"),
+        expand_btn = tk.Button(control, text="🗖", font=("Segoe UI", 11, "bold"),
                                bg="#E0E0E0", width=3, relief="flat", command=toggle_expand)
         expand_btn.pack(side="right", padx=(5, 3))
 
-        close_btn = tk.Button(control, text="✖", font=("Times New Roman", 10, "bold"),
+        close_btn = tk.Button(control, text="✖", font=("Segoe UI", 11, "bold"),
                               bg="#FFCDD2", width=3, relief="flat", command=close_chart)
         close_btn.pack(side="right", padx=(0, 5))
 
         # --- Expanded View Labels (Operator & CpK) ---
         # Only visible when expanded
         op_var = tk.StringVar(value="Operator: --")
-        op_label = tk.Label(control, textvariable=op_var, bg="#f8f9fa", fg="blue", font=("Arial", 10, "bold"))
+        op_label = tk.Label(control, textvariable=op_var, bg="#f8f9fa", fg="blue", font=("Segoe UI", 11, "bold"))
         
         cpk_var = tk.StringVar(value="CpK: --")
-        cpk_label = tk.Label(control, textvariable=cpk_var, bg="#f8f9fa", fg="purple", font=("Arial", 10, "bold"))
+        cpk_label = tk.Label(control, textvariable=cpk_var, bg="#f8f9fa", fg="purple", font=("Segoe UI", 11, "bold"))
 
 
         # matplotlib chart
@@ -8549,10 +8537,8 @@ class RunChatPage(ctk.CTkFrame):
                 chart_info["auto_follow"] = True
             chart_info["update_visible"]()
 
-        tk.Button(nav_frame, text="◀", font=("Arial", 11, "bold"),
-                  bg="#E0E0E0", width=3, command=move_left).pack(side="left", padx=5)
-        tk.Button(nav_frame, text="▶", font=("Arial", 11, "bold"),
-                  bg="#E0E0E0", width=3, command=move_right).pack(side="right", padx=5)
+        ModernButton(nav_frame, text="◀", font=("Segoe UI", 11, "bold"), fg_color="#E0E0E0", text_color="black", hover_color="#BDBDBD", width=30, command=move_left).pack(side="left", padx=5)
+        ModernButton(nav_frame, text="▶", font=("Segoe UI", 11, "bold"), fg_color="#E0E0E0", text_color="black", hover_color="#BDBDBD", width=30, command=move_right).pack(side="right", padx=5)
 
         # style setup
         def setup_chart():
@@ -9141,7 +9127,7 @@ class UsbAssignmentPopup(ctk.CTkToplevel):
         self.selections = {} # (ag, ch, dwg) -> {"customer": var, "item": var}
         
         # UI Setup
-        ctk.CTkLabel(self, text="Assign Customer & Item to New USB Data", font=("Times New Roman", 18, "bold")).pack(pady=10)
+        ctk.CTkLabel(self, text="Assign Customer & Item to New USB Data", font=("Segoe UI", 18, "bold")).pack(pady=10)
         
         scroll_frame = ctk.CTkScrollableFrame(self)
         scroll_frame.pack(fill="both", expand=True, padx=10, pady=5)
@@ -9149,11 +9135,11 @@ class UsbAssignmentPopup(ctk.CTkToplevel):
         # Header Row
         headers = ctk.CTkFrame(scroll_frame, fg_color="transparent")
         headers.pack(fill="x", pady=5)
-        ctk.CTkLabel(headers, text="Drawing Val", width=120, font=("Arial", 12, "bold")).pack(side="left", padx=5)
-        ctk.CTkLabel(headers, text="AG ID", width=60, font=("Arial", 12, "bold")).pack(side="left", padx=5)
-        ctk.CTkLabel(headers, text="CH", width=40, font=("Arial", 12, "bold")).pack(side="left", padx=5)
-        ctk.CTkLabel(headers, text="Customer", width=200, font=("Arial", 12, "bold")).pack(side="left", padx=5)
-        ctk.CTkLabel(headers, text="Item", width=200, font=("Arial", 12, "bold")).pack(side="left", padx=5)
+        ctk.CTkLabel(headers, text="Drawing Val", width=120, font=("Segoe UI", 11, "bold")).pack(side="left", padx=5)
+        ctk.CTkLabel(headers, text="AG ID", width=60, font=("Segoe UI", 11, "bold")).pack(side="left", padx=5)
+        ctk.CTkLabel(headers, text="CH", width=40, font=("Segoe UI", 11, "bold")).pack(side="left", padx=5)
+        ctk.CTkLabel(headers, text="Customer", width=200, font=("Segoe UI", 11, "bold")).pack(side="left", padx=5)
+        ctk.CTkLabel(headers, text="Item", width=200, font=("Segoe UI", 11, "bold")).pack(side="left", padx=5)
 
         customer_options = ["None"] + [c.get("name", "") for c in customers_list if c.get("name")]
         item_options = ["None"] + [i.get("name", "") for i in items_list if i.get("name")]
@@ -9179,9 +9165,9 @@ class UsbAssignmentPopup(ctk.CTkToplevel):
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.pack(pady=10)
         
-        self.confirm_btn = ctk.CTkButton(btn_frame, text="Confirm Assignments", fg_color="#4CAF50", hover_color="#388E3C", command=self.confirm)
+        self.confirm_btn = ModernButton(btn_frame, text="Confirm Assignments", fg_color="#4CAF50", hover_color="#388E3C", command=self.confirm)
         self.confirm_btn.pack(side="left", padx=10)
-        ctk.CTkButton(btn_frame, text="Cancel", fg_color="#F44336", hover_color="#D32F2F", command=self.destroy).pack(side="left", padx=10)
+        ModernButton(btn_frame, text="Cancel", fg_color="#F44336", hover_color="#D32F2F", command=self.destroy).pack(side="left", padx=10)
 
     def confirm(self):
         # Disable button immediately to prevent double-clicks
@@ -9281,7 +9267,7 @@ class UsbDataPage(ctk.CTkFrame):
         ctk.CTkLabel(
             title_frame,
             text="🔌 USB Data Upload",
-            font=("Times New Roman", 22, "bold"),
+            font=("Segoe UI", 18, "bold"),
             text_color="#1976D2"
         ).pack(side="left")
         
@@ -9290,7 +9276,7 @@ class UsbDataPage(ctk.CTkFrame):
         btn_frame.pack(side="right")
 
         # Save to DB Button
-        self.save_btn = ctk.CTkButton(
+        self.save_btn = ModernButton(
             btn_frame,
             text="💾 Save to DB",
             font=("Segoe UI", 13, "bold"),
@@ -9304,7 +9290,7 @@ class UsbDataPage(ctk.CTkFrame):
         self.save_btn.pack(side="left", padx=8)
 
         # Edit Assignments Button
-        edit_btn = ctk.CTkButton(
+        edit_btn = ModernButton(
             btn_frame,
             text="✏️ Edit Assignments",
             font=("Segoe UI", 13, "bold"),
@@ -9317,7 +9303,7 @@ class UsbDataPage(ctk.CTkFrame):
         edit_btn.pack(side="left", padx=8)
 
         # Refresh Button
-        refresh_btn = ctk.CTkButton(
+        refresh_btn = ModernButton(
             btn_frame,
             text="🔄 Refresh",
             font=("Segoe UI", 13, "bold"),
@@ -9330,7 +9316,7 @@ class UsbDataPage(ctk.CTkFrame):
         refresh_btn.pack(side="left", padx=8)
 
         # Clear Button
-        clear_btn = ctk.CTkButton(
+        clear_btn = ModernButton(
             btn_frame,
             text="🗑️ Clear Data",
             font=("Segoe UI", 13, "bold"),
@@ -9343,7 +9329,7 @@ class UsbDataPage(ctk.CTkFrame):
         clear_btn.pack(side="left", padx=8)
 
         # Upload Button
-        upload_btn = ctk.CTkButton(
+        upload_btn = ModernButton(
             btn_frame,
             text="📤 Upload USB Files",
             font=("Segoe UI", 13, "bold"),
@@ -9928,7 +9914,7 @@ class LiveDataPage(ctk.CTkFrame):
         ctk.CTkLabel(
             title_frame,
             text="📊 Live Data Monitoring",
-            font=("Times New Roman", 22, "bold"),
+            font=("Segoe UI", 18, "bold"),
             text_color="#1976D2"
         ).pack(side="left")
         
@@ -9943,7 +9929,7 @@ class LiveDataPage(ctk.CTkFrame):
         ctk.CTkLabel(
             status_badge,
             text="● LIVE",
-            font=("Times New Roman", 11, "bold"),
+            font=("Segoe UI", 11, "bold"),
             text_color="#43A047"
         ).pack(padx=15, pady=6)
 
@@ -10087,8 +10073,8 @@ class LiveDataPage(ctk.CTkFrame):
             # fallback to Treeview (keeps previous behavior)
             self.use_tksheet = False
             style = ttk.Style()
-            style.configure("LiveData.Treeview", font=("Times New Roman", 11), rowheight=28)
-            style.configure("LiveData.Treeview.Heading", font=("Times New Roman", 12, "bold"))
+            style.configure("LiveData.Treeview", font=("Segoe UI", 11), rowheight=28)
+            style.configure("LiveData.Treeview.Heading", font=("Segoe UI", 11, "bold"))
             style.map("LiveData.Treeview", background=[("selected", "#BBDEFB")])
 
             self.table = ttk.Treeview(self.table_frame, columns=cols, show="headings", height=12,
@@ -10595,12 +10581,7 @@ class ReportPage(ctk.CTkFrame):
     # --- PATCH 1: Modify _build_header() to add the PRINT button ---
     def _build_header(self):
         # === Modern Header Card with Glassmorphism ===
-        header = ctk.CTkFrame(
-            self,
-            corner_radius=15,
-            border_width=1,
-            border_color="#E3F2FD"
-        )
+        header = ModernCardFrame(self)
         header.pack(fill="x", padx=20, pady=(15, 10))
         
         header_inner = ctk.CTkFrame(header, fg_color="transparent")
@@ -10615,38 +10596,38 @@ class ReportPage(ctk.CTkFrame):
         ctk.CTkLabel(
             left_frame,
             text="📊  Report",
-            font=("Times New Roman", 22, "bold"),
+            font=("Segoe UI", 18, "bold"),
             text_color="#1976D2"
         ).pack(side="left", padx=(0, 15))
 
         # Export Button with modern styling
         # Export Excel Button
-        self.excel_btn = ctk.CTkButton(
+        self.excel_btn = ModernButton(
             left_frame,
             text="📊 Export Excel",
             text_color="white",
             width=120,
             height=38,
-            font=("Times New Roman", 13, "bold"),
+            font=("Segoe UI", 13, "bold"),
             fg_color="#43A047",
             hover_color="#2E7D32",
-            corner_radius=10,
+            corner_radius=8,
             border_width=0,
             command=lambda: self.export_data("excel")
         )
         self.excel_btn.pack(side="left", padx=6)
 
         # Export PDF Button
-        self.pdf_btn = ctk.CTkButton(
+        self.pdf_btn = ModernButton(
             left_frame,
             text="📄 Export PDF",
             text_color="white",
             width=120,
             height=38,
-            font=("Times New Roman", 13, "bold"),
+            font=("Segoe UI", 13, "bold"),
             fg_color="#43A047",
             hover_color="#2E7D32", # Green
-            corner_radius=10,
+            corner_radius=8,
             border_width=0,
             command=lambda: self.export_data("pdf")
         )
@@ -10658,15 +10639,15 @@ class ReportPage(ctk.CTkFrame):
         center_frame = ctk.CTkFrame(header_inner, fg_color="transparent")
         center_frame.pack(side="left", expand=True)
 
-        self.analyze_btn = ctk.CTkButton(
+        self.analyze_btn = ModernButton(
             center_frame,
             text="📈 Analyze",
             width=130,
             height=38,
-            font=("Times New Roman", 13, "bold"),
+            font=("Segoe UI", 13, "bold"),
             fg_color="#0288D1",
             hover_color="#0277BD",
-            corner_radius=10,
+            corner_radius=8,
             border_width=0,
             command=self.open_analyze_page
         )
@@ -10678,29 +10659,29 @@ class ReportPage(ctk.CTkFrame):
         right_frame = ctk.CTkFrame(header_inner, fg_color="transparent")
         right_frame.pack(side="right")
 
-        del_btn = ctk.CTkButton(
+        del_btn = ModernButton(
             right_frame,
             text="🗑 Delete",
             width=100,
             height=38,
-            font=("Times New Roman", 13, "bold"),
+            font=("Segoe UI", 13, "bold"),
             fg_color="#E53935",
             hover_color="#D32F2F",
-            corner_radius=10,
+            corner_radius=8,
             border_width=0,
             command=self._on_delete_clicked
         )
         del_btn.pack(side="left", padx=6)
 
-        ref_btn = ctk.CTkButton(
+        ref_btn = ModernButton(
             right_frame,
             text="🔄 Refresh",
             width=100,
             height=38,
-            font=("Times New Roman", 13, "bold"),
+            font=("Segoe UI", 13, "bold"),
             fg_color="#1976D2",
             hover_color="#1565C0",
-            corner_radius=10,
+            corner_radius=8,
             border_width=0,
             command=self.refresh_table_data
         )
@@ -11082,7 +11063,7 @@ class ReportPage(ctk.CTkFrame):
             filter_frame.grid_columnconfigure(c, weight=1)
 
         # From
-        ctk.CTkLabel(self.filter_cells[0][0], text="Date Time (From)", font=("Times New Roman", 12, "bold"),
+        ctk.CTkLabel(self.filter_cells[0][0], text="Date Time (From)", font=("Segoe UI", 11, "bold"),
                      text_color="#333").pack(anchor="w", padx=6, pady=(4, 0))
         from_dt_container = ctk.CTkFrame(self.filter_cells[0][1])
         from_dt_container.pack(fill="both", padx=4, pady=(3, 3))
@@ -11096,7 +11077,7 @@ class ReportPage(ctk.CTkFrame):
         self.from_time_spinner.grid(row=0, column=1, sticky="nsew")
 
         # To
-        ctk.CTkLabel(self.filter_cells[1][0], text="Date Time (To)", font=("Times New Roman", 12, "bold"),
+        ctk.CTkLabel(self.filter_cells[1][0], text="Date Time (To)", font=("Segoe UI", 11, "bold"),
                      text_color="#333").pack(anchor="w", padx=6, pady=(4, 0))
         to_dt_container = ctk.CTkFrame(self.filter_cells[1][1])
         to_dt_container.pack(fill="both", padx=4, pady=(3, 3))
@@ -11110,14 +11091,14 @@ class ReportPage(ctk.CTkFrame):
         self.to_time_spinner.grid(row=0, column=1, sticky="nsew")
 
         # Item
-        ctk.CTkLabel(self.filter_cells[0][2], text="Item", font=("Times New Roman", 11)).pack(anchor="w", padx=6, pady=(6, 0))
+        ctk.CTkLabel(self.filter_cells[0][2], text="Item", font=("Segoe UI", 11)).pack(anchor="w", padx=6, pady=(6, 0))
         self.item_combo = self._create_searchable_combobox(self.filter_cells[0][3], self.item_var, self._items_display_list())
 
         # AirGauge ID (reduced width)
         ctk.CTkLabel(
             self.filter_cells[0][4],
             text="AirGauge ID",
-            font=("Times New Roman", 11)
+            font=("Segoe UI", 11)
         ).pack(anchor="w", padx=6, pady=(6, 0))
 
         ag_container = ctk.CTkFrame(self.filter_cells[0][5])
@@ -11147,19 +11128,19 @@ class ReportPage(ctk.CTkFrame):
 
 
         # Operator
-        ctk.CTkLabel(self.filter_cells[1][2], text="Operator", font=("Times New Roman", 11)).pack(anchor="w", padx=6, pady=(6, 0))
+        ctk.CTkLabel(self.filter_cells[1][2], text="Operator", font=("Segoe UI", 11)).pack(anchor="w", padx=6, pady=(6, 0))
         self.operator_combo = self._create_searchable_combobox(self.filter_cells[1][3], self.operator_var, self._operators_display_list())
 
         # Machine
-        ctk.CTkLabel(self.filter_cells[1][4], text="Machine ID", font=("Times New Roman", 11)).pack(anchor="w", padx=6, pady=(6, 0))
+        ctk.CTkLabel(self.filter_cells[1][4], text="Machine ID", font=("Segoe UI", 11)).pack(anchor="w", padx=6, pady=(6, 0))
         self.machine_combo = self._create_searchable_combobox(self.filter_cells[1][5], self.machine_var, self._machines_display_list())
 
         # Drawing (dynamic from visible table)
-        ctk.CTkLabel(self.filter_cells[0][6],text="Drawing",font=("Times New Roman", 11)).pack(anchor="w", padx=6, pady=(6, 0))
+        ctk.CTkLabel(self.filter_cells[0][6],text="Drawing",font=("Segoe UI", 11)).pack(anchor="w", padx=6, pady=(6, 0))
         self.drawing_combo = self._create_searchable_combobox(self.filter_cells[0][7],self.drawing_var,["All"])
 
         # Customer filter
-        ctk.CTkLabel(self.filter_cells[1][6],text="Customer",font=("Times New Roman", 11)).pack(anchor="w", padx=6, pady=(6, 0))
+        ctk.CTkLabel(self.filter_cells[1][6],text="Customer",font=("Segoe UI", 11)).pack(anchor="w", padx=6, pady=(6, 0))
         self.customer_combo = self._create_searchable_combobox(self.filter_cells[1][7],self.customer_var,["All"])
 
 
@@ -11307,7 +11288,7 @@ class ReportPage(ctk.CTkFrame):
             return hh, mm, ss
         hh_val, mm_val, ss_val = parse_time(time_var.get())
         NORMAL_BG = "white"; SELECT_BG = "#0A84FF"; NORMAL_TEXT = "#222"; SELECT_TEXT = "white"
-        LABEL_FONT = ("Times New Roman", 12, "bold"); COLON_FONT = ("Times New Roman", 12)
+        LABEL_FONT = ("Segoe UI", 11, "bold"); COLON_FONT = ("Segoe UI", 11)
         hh_lbl = ctk.CTkLabel(display, text=f"{hh_val:02d}", font=LABEL_FONT, text_color=NORMAL_TEXT, fg_color=NORMAL_BG, corner_radius=4, anchor="center")
         hh_lbl.grid(row=0, column=0, sticky="nsew", padx=(2, 2), pady=4)
         colon1 = ctk.CTkLabel(display, text=":", font=COLON_FONT, text_color=NORMAL_TEXT); colon1.grid(row=0, column=1, sticky="nsew")
@@ -11317,8 +11298,8 @@ class ReportPage(ctk.CTkFrame):
         ss_lbl = ctk.CTkLabel(display, text=f"{ss_val:02d}", font=LABEL_FONT, text_color=NORMAL_TEXT, fg_color=NORMAL_BG, corner_radius=4, anchor="center")
         ss_lbl.grid(row=0, column=4, sticky="nsew", padx=(2, 4), pady=4)
         arrow_frame = ctk.CTkFrame(outer, corner_radius=0, border_width=0); arrow_frame.grid(row=0, column=1, sticky="ns")
-        up_btn = ctk.CTkButton(arrow_frame, text="▲",width=26, height=18, fg_color="#F0F0F0", hover=False, corner_radius=4, command=lambda: change_value(1)); up_btn.pack(side="top", padx=0, pady=(2, 4))
-        down_btn = ctk.CTkButton(arrow_frame, text="▼",width=26, height=18, fg_color="#F0F0F0", hover=False, corner_radius=4, command=lambda: change_value(-1)); down_btn.pack(side="top", padx=0, pady=(0, 2))
+        up_btn = ModernButton(arrow_frame, text="▲",width=26, height=18, fg_color="#F0F0F0", hover=False, corner_radius=4, command=lambda: change_value(1)); up_btn.pack(side="top", padx=0, pady=(2, 4))
+        down_btn = ModernButton(arrow_frame, text="▼",width=26, height=18, fg_color="#F0F0F0", hover=False, corner_radius=4, command=lambda: change_value(-1)); down_btn.pack(side="top", padx=0, pady=(0, 2))
         selected = {"field": "hour"}
         def update_visual():
             # Reset
@@ -11427,7 +11408,7 @@ class ReportPage(ctk.CTkFrame):
     # Table area build
     # ---------------------------
     def _build_table_area(self):
-        table_frame = ctk.CTkFrame(self)
+        table_frame = ModernCardFrame(self)
         table_frame.pack(fill="both", expand=True, padx=12, pady=(6, 12))
         table_frame.grid_rowconfigure(0, weight=1); table_frame.grid_columnconfigure(0, weight=1)
 
@@ -11444,6 +11425,7 @@ class ReportPage(ctk.CTkFrame):
             except:
                 pass
             self.sheet.grid(row=0, column=0, sticky="nsew", padx=8, pady=8)
+            make_sheet_auto_resize(self.sheet, table_frame, cols)
             try:
                 self.sheet.enable_bindings(("single_select", "row_select", "arrowkeys", "copy", "select_all", "right_click_popup_menu"))
             except:
@@ -11466,7 +11448,7 @@ class ReportPage(ctk.CTkFrame):
     def _create_loading_overlay(self):
         self._overlay = ctk.CTkFrame(self, fg_color="#000000", corner_radius=0)
         self._overlay.place_forget()
-        self._overlay_label = tk.Label(self._overlay, text="Loading data…", font=("Times New Roman", 14, "bold"), bg="#000000", fg="white")
+        self._overlay_label = tk.Label(self._overlay, text="Loading data…", font=("Segoe UI", 13, "bold"), bg="#000000", fg="white")
         self._overlay_label.pack(pady=(20,10))
         self._overlay_pb = ttk.Progressbar(self._overlay, mode="indeterminate", length=240)
         self._overlay_pb.pack(pady=(0,20))
@@ -12098,7 +12080,7 @@ class ReportPage(ctk.CTkFrame):
             header_label = ctk.CTkLabel(
                 main_frame, 
                 text="Enter Admin Password", 
-                font=("Times New Roman Variable Display", 18, "bold"),
+                font=("Segoe UI", 18, "bold"),
                 text_color=("gray10", "gray90")
             )
             header_label.pack(anchor="w", pady=(0, 8))
@@ -12106,7 +12088,7 @@ class ReportPage(ctk.CTkFrame):
             sub_label = ctk.CTkLabel(
                 main_frame,
                 text="Please verify your identity to continue.",
-                font=("Times New Roman", 12),
+                font=("Segoe UI", 11),
                 text_color=("gray40", "gray70")
             )
             sub_label.pack(anchor="w", pady=(0, 20))
@@ -12118,7 +12100,7 @@ class ReportPage(ctk.CTkFrame):
                 show="●", 
                 width=300, 
                 height=36,
-                font=("Times New Roman", 13),
+                font=("Segoe UI", 13),
                 placeholder_text="Password"
             )
             entry.pack(fill="x", pady=(0, 24))
@@ -12133,22 +12115,22 @@ class ReportPage(ctk.CTkFrame):
             def on_cancel(event=None):
                 dlg.destroy()
             # Confirm Button (Primary)
-            btn_confirm = ctk.CTkButton(
+            btn_confirm = ModernButton(
                 button_frame, 
                 text="Unlock", 
                 width=100, 
                 height=36,
-                font=("Times New Roman", 13, "bold"),
+                font=("Segoe UI", 13, "bold"),
                 command=on_confirm
             )
             btn_confirm.pack(side="right", padx=(12, 0))
             # Cancel Button (Secondary - Ghost Style)
-            btn_cancel = ctk.CTkButton(
+            btn_cancel = ModernButton(
                 button_frame, 
                 text="Cancel", 
                 width=100, 
                 height=36,
-                font=("Times New Roman", 13),
+                font=("Segoe UI", 13),
                 fg_color="transparent",
                 border_width=1,
                 border_color=("gray70", "gray40"),
@@ -12360,11 +12342,11 @@ class ReportPage(ctk.CTkFrame):
             bg.pack(fill="both", expand=True)
 
             # Warning Icon/Text
-            ctk.CTkLabel(bg, text="⚠️", font=("Arial", 40), text_color="#FFB300").pack(pady=(20, 5))
+            ctk.CTkLabel(bg, text="⚠️", font=("Segoe UI", 24, "bold"), text_color="#FFB300").pack(pady=(20, 5))
             ctk.CTkLabel(bg, text="No valid numerical readings found in current view.", 
-                         font=("Segoe UI", 12, "bold"), text_color="#333333").pack(pady=5)
+                         font=("Segoe UI", 11, "bold"), text_color="#333333").pack(pady=5)
 
-            ctk.CTkButton(bg, text="OK", width=90, fg_color="#1976D2", hover_color="#1565C0",
+            ModernButton(bg, text="OK", width=90, fg_color="#1976D2", hover_color="#1565C0",
                           command=win.destroy).pack(pady=(15, 20))
             
             win.focus_force()
@@ -12571,18 +12553,18 @@ class AnalysisPage(ctk.CTkFrame):
         self.canvas.bind("<Leave>", _unbind_mouse)
 
         # Header
-        header = ctk.CTkFrame(scroll_frame, fg_color="#E3F2FD", corner_radius=10, height=58)
+        header = ctk.CTkFrame(scroll_frame, fg_color="#E3F2FD", corner_radius=8, height=58)
         header.pack(fill="x", padx=12, pady=(10,6))
-        ctk.CTkLabel(header, text=self.title_text, font=("Times New Roman Semibold", 18), text_color="#0D47A1").pack(side="left", padx=18, pady=8)
+        ctk.CTkLabel(header, text=self.title_text, font=("Segoe UI", 18, "bold"), text_color="#0D47A1").pack(side="left", padx=18, pady=8)
         
 
         # small right area with a back button and optional refresh (kept minimal)
         right_btn_frame = ctk.CTkFrame(header, fg_color="transparent")
         right_btn_frame.pack(side="right", padx=10)
-        back_btn = ctk.CTkButton(right_btn_frame, text="← Back", width=110, fg_color="#1976D2", hover_color="#1565C0",
+        back_btn = ModernButton(right_btn_frame, text="← Back", width=110, fg_color="#1976D2", hover_color="#1565C0",
                                 command=self.go_back)
         back_btn.pack(side="left", padx=6)
-        print_btn = ctk.CTkButton(
+        print_btn = ModernButton(
             right_btn_frame,
             text="🖨 Print",
             width=110,
@@ -12686,7 +12668,7 @@ class AnalysisPage(ctk.CTkFrame):
         ctk.CTkLabel(
             data_row,
             text="💾 Data Collection (10×N)",
-            font=("Times New Roman", 15, "bold"),
+            font=("Segoe UI", 13, "bold"),
             text_color="#2E7D32"
         ).grid(row=0, column=0, sticky="w")
 
@@ -12712,7 +12694,7 @@ class AnalysisPage(ctk.CTkFrame):
             lbl = ctk.CTkLabel(
                 cell,
                 text=text,
-                font=("Times New Roman", 12, "bold" if bg == "#E3F2FD" else "normal")
+                font=("Segoe UI", 11, "bold" if bg == "#E3F2FD" else "normal")
             )
             lbl.pack(expand=True, fill="both")
 
@@ -12734,7 +12716,7 @@ class AnalysisPage(ctk.CTkFrame):
         self.cpk_status_label = ctk.CTkLabel(
             data_row,
             text="",
-            font=("Times New Roman", 16, "bold"),
+            font=("Segoe UI", 18, "bold"),
             anchor="e"
         )
         self.cpk_status_label.grid(row=0, column=3, sticky="e")
@@ -12747,34 +12729,20 @@ class AnalysisPage(ctk.CTkFrame):
         spc_row.pack(anchor="w", padx=18, pady=(0, 8))
 
         # SPC card (LEFT)
-        spc_card = ctk.CTkFrame(
-            spc_row,
-            fg_color="#FFFFFF",
-            border_color="#CFD8DC",
-            border_width=1,
-            corner_radius=10
-        )
+        spc_card = ModernCardFrame(spc_row)
         spc_card.pack(side="left", padx=(0, 12), anchor="n")
         right_stack = tk.Frame(spc_row, bg="white")
         right_stack.pack(side="left", padx=12, anchor="n")
 
 
         # -------- Cp / Cpk Summary Card (BELOW UTL/LTL) --------
-        self.capability_card = ctk.CTkFrame(
-            spc_row,
-            fg_color="#FFFFFF",
-            border_color="#D0D7DE",
-            border_width=1,
-            corner_radius=14,
-            width=400,
-            height=340
-        )
+        self.capability_card = ModernCardFrame(spc_row, width=400, height=340)
         self.capability_card.pack(in_=right_stack,pady=0)
         self.capability_card.pack_propagate(False)
 
-        FONT_L = ("Times New Roman", 12, "bold")
-        FONT_V = ("Times New Roman Semibold", 12, "bold")
-        FONT_H = ("Times New Roman", 13, "bold")
+        FONT_L = ("Segoe UI", 11, "bold")
+        FONT_V = ("Segoe UI", 11, "bold")
+        FONT_H = ("Segoe UI", 13, "bold")
 
         cap = tk.Frame(self.capability_card, bg="white")
         cap.pack(fill="x", padx=10, pady=2)
@@ -12857,7 +12825,7 @@ class AnalysisPage(ctk.CTkFrame):
 
         # NEW: horizontal container
         spc_holder = tk.Frame(spc_card, bg="#FFFFFF")
-        spc_holder.pack(padx=10, pady=10)
+        spc_holder.pack(padx=10, pady=10, fill="both", expand=True)
 
         # FIXED: use spc_holder
         self.table = tksheet.Sheet(
@@ -12869,8 +12837,8 @@ class AnalysisPage(ctk.CTkFrame):
             show_y_scrollbar=True,
             theme="light green"
         )
-        self.table.pack()
-
+        self.table.pack(fill="both", expand=True)
+        make_sheet_auto_resize(self.table, spc_holder, self.columns)
 
         # hide index robustly
         try:
@@ -12895,7 +12863,7 @@ class AnalysisPage(ctk.CTkFrame):
         # visual tuning
         try:
             self.table.set_options(
-                font=("Times New Roman", 11, "normal"),
+                font=("Segoe UI", 11, "normal"),
                 table_bg="#FFFFFF",
                 grid_color="#E0E0E0",
                 row_height=30,
@@ -12990,10 +12958,10 @@ class AnalysisPage(ctk.CTkFrame):
 
         # ------------------- Histogram area (no S.No) -------------------
         ctk.CTkLabel(scroll_frame, text="📈 Calculations for Histogram",
-                     font=("Times New Roman", 15, "bold"), text_color="#2E7D32").pack(anchor="w", padx=20, pady=(3,4))
+                     font=("Segoe UI", 13, "bold"), text_color="#2E7D32").pack(anchor="w", padx=20, pady=(3,4))
 
         hist_card = ctk.CTkFrame(scroll_frame, fg_color="#FFFFFF",
-                                 border_color="#CFD8DC", border_width=1, corner_radius=10)
+                                 border_color="#CFD8DC", border_width=1, corner_radius=8)
         hist_card.pack(anchor="w", padx=18, pady=(0,14))
 
         calc_outer = tk.Frame(hist_card, bg="#FFFFFF")
@@ -13020,12 +12988,13 @@ class AnalysisPage(ctk.CTkFrame):
         )
         self.calc_table.enable_bindings(("single_select", "column_select", "arrowkeys", "copy"))
         self.calc_table.pack(fill="both", expand=True)
+        make_sheet_auto_resize(self.calc_table, calc_outer, self.calc_columns)
         # -------- Second histogram table (6-column metrics) --------
         lower_hist_holder = tk.Frame(hist_card, bg="#FFFFFF")
-        lower_hist_holder.pack(anchor="w", padx=8, pady=(0,12))
+        lower_hist_holder.pack(anchor="w", padx=8, pady=(0,12), fill="x", expand=True)
 
         lower_left = tk.Frame(lower_hist_holder, bg="#FFFFFF")
-        lower_left.pack(side="left")
+        lower_left.pack(side="left", fill="both", expand=True)
 
 
         # ===============================================================
@@ -13048,7 +13017,8 @@ class AnalysisPage(ctk.CTkFrame):
             "single_select", "row_select", "arrowkeys", "copy"
         ))
 
-        self.calc_table_small.pack()
+        self.calc_table_small.pack(fill="both", expand=True)
+        make_sheet_auto_resize(self.calc_table_small, lower_left, [f"C{i}" for i in range(1, 7)])
 
 
         # ===============================================================
@@ -13072,7 +13042,7 @@ class AnalysisPage(ctk.CTkFrame):
         # ---- Visual tuning to match upper histogram table ----
         try:
             self.calc_table_small.set_options(
-                font=("Times New Roman", 11, "normal"),
+                font=("Segoe UI", 11, "normal"),
                 table_bg="#FFFFFF",
                 grid_color="#E0E0E0",
                 row_height=28,
@@ -13132,7 +13102,7 @@ class AnalysisPage(ctk.CTkFrame):
         # Visual options (keep as you had)
         try:
             self.calc_table.set_options(
-                font=("Times New Roman", 11, "normal"),
+                font=("Segoe UI", 11, "normal"),
                 table_bg="#FFFFFF",
                 grid_color="#E0E0E0",
                 row_height=28,
@@ -13192,7 +13162,7 @@ class AnalysisPage(ctk.CTkFrame):
 
         # Status label (unchanged)
         self.status_label = ctk.CTkLabel(
-            scroll_frame, text="", font=("Times New Roman", 12), text_color="#1565C0"
+            scroll_frame, text="", font=("Segoe UI", 11), text_color="#1565C0"
         )
         self.status_label.pack(pady=(6, 10))
 
@@ -13864,11 +13834,11 @@ class AnalysisPage(ctk.CTkFrame):
             # ideally covering the chart area.
             # Simplified: Just create a centered toplevel-like frame or pack at top
             
-            self.loading_overlay = ctk.CTkFrame(self, fg_color="rgba(255,255,255,0.7)", corner_radius=10)
+            self.loading_overlay = ctk.CTkFrame(self, fg_color="rgba(255,255,255,0.7)", corner_radius=8)
             self.loading_overlay.place(relx=0.5, rely=0.5, anchor="center")
             
             lbl = ctk.CTkLabel(self.loading_overlay, text="⟳ Calculating & Plotting...", 
-                               font=("Segoe UI", 20, "bold"), text_color="#1565C0")
+                               font=("Segoe UI", 18, "bold"), text_color="#1565C0")
             lbl.pack(padx=30, pady=20)
             
             # Disable interactions if needed
@@ -14735,7 +14705,7 @@ class AnalysisPage(ctk.CTkFrame):
         ctk.CTkLabel(
             parent,
             text=label,
-            font=("Times New Roman", 10),
+            font=("Segoe UI", 11),
             anchor="w",
             text_color="#37474F"
         ).grid(row=row, column=0, columnspan=2, sticky="w", pady=0)
@@ -14743,7 +14713,7 @@ class AnalysisPage(ctk.CTkFrame):
         val = ctk.CTkLabel(
             parent,
             text="–",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 11, "bold"),
             anchor="e",
             text_color="#37474F"
         )
@@ -14820,6 +14790,12 @@ class HomePage(tk.Frame):
             self._raw_img = None
 
     def _on_resize(self, event=None):
+        if hasattr(self, "_resize_job") and self._resize_job:
+            self.after_cancel(self._resize_job)
+        self._resize_job = self.after(100, self._do_resize)
+
+    def _do_resize(self):
+        self._resize_job = None
         if self._raw_img is None:
             return
         try:
@@ -14828,7 +14804,7 @@ class HomePage(tk.Frame):
             h = self._canvas.winfo_height()
             if w < 10 or h < 10:
                 return
-            resized = self._raw_img.resize((w, h), Image.LANCZOS)
+            resized = self._raw_img.resize((w, h), Image.Resampling.LANCZOS)
             self._photo = ImageTk.PhotoImage(resized)
             self._canvas.itemconfig(self._img_item, image=self._photo)
         except Exception as e:

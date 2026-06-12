@@ -5539,7 +5539,7 @@ class MachineMasterPage(ctk.CTkFrame):
                 table_card,
                 headers=cols,
                 data=data,
-                show_x_scrollbar=True,
+                show_x_scrollbar=False,
                 show_y_scrollbar=True,
             )
 
@@ -10575,6 +10575,63 @@ class LiveDataPage(ctk.CTkFrame):
                     self._process_row_visuals(parsed)
                     
         self.after(self._batch_interval_ms, self._ui_update_loop)
+
+    def _make_header_icon(self, kind, size=24, color="#009A55"):
+        """Create simple green line icons for the Live Data header."""
+        img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        w = size
+        c = color
+        lw = max(2, size // 12)
+
+        if kind == "date":
+            draw.rectangle((4, 6, w - 4, w - 4), outline=c, width=lw)
+            draw.line((4, 11, w - 4, 11), fill=c, width=lw)
+            draw.line((8, 3, 8, 8), fill=c, width=lw)
+            draw.line((w - 8, 3, w - 8, 8), fill=c, width=lw)
+        elif kind == "time":
+            draw.ellipse((4, 4, w - 4, w - 4), outline=c, width=lw)
+            draw.line((w // 2, w // 2, w // 2, 8), fill=c, width=lw)
+            draw.line((w // 2, w // 2, w - 8, w // 2 + 4), fill=c, width=lw)
+        elif kind == "reading":
+            draw.arc((4, 5, w - 4, w + 10), 200, 340, fill=c, width=lw)
+            draw.line((w // 2, w // 2 + 5, w - 7, 8), fill=c, width=lw)
+            for x, y in ((8, 15), (11, 10), (17, 8), (20, 14)):
+                draw.ellipse((x - 1, y - 1, x + 1, y + 1), fill=c)
+        elif kind == "offset":
+            draw.ellipse((5, 5, w - 5, w - 5), outline=c, width=lw)
+            draw.ellipse((w // 2 - 3, w // 2 - 3, w // 2 + 3, w // 2 + 3), fill=c)
+            draw.line((w // 2, 1, w // 2, 7), fill=c, width=lw)
+            draw.line((w // 2, w - 7, w // 2, w - 1), fill=c, width=lw)
+            draw.line((1, w // 2, 7, w // 2), fill=c, width=lw)
+            draw.line((w - 7, w // 2, w - 1, w // 2), fill=c, width=lw)
+        elif kind == "status":
+            draw.ellipse((5, 5, w - 5, w - 5), outline=c, width=lw)
+            draw.line((w // 2, 11, w // 2, w - 8), fill=c, width=lw)
+            draw.ellipse((w // 2 - 1, 7, w // 2 + 1, 9), fill=c)
+        elif kind == "tag":
+            draw.line((5, 5, 14, 5, w - 4, 15, 15, w - 4, 5, 14, 5, 5), fill=c, width=lw)
+            draw.ellipse((8, 8, 11, 11), fill=c)
+        elif kind == "channel":
+            for i, h in enumerate((7, 11, 15, 20)):
+                x = 5 + i * 5
+                draw.line((x, w - 4, x, w - h), fill=c, width=lw)
+        elif kind == "drawing":
+            draw.rectangle((6, 4, w - 6, w - 4), outline=c, width=lw)
+            draw.line((w - 10, 4, w - 6, 8, w - 10, 8), fill=c, width=lw)
+        elif kind == "user":
+            draw.ellipse((w // 2 - 4, 4, w // 2 + 4, 12), outline=c, width=lw)
+            draw.arc((5, 11, w - 5, w + 6), 205, 335, fill=c, width=lw)
+        elif kind == "cube":
+            draw.line((w // 2, 4, w - 5, 9, w - 5, w - 7, w // 2, w - 3, 5, w - 7, 5, 9, w // 2, 4), fill=c, width=lw)
+            draw.line((5, 9, w // 2, 14, w - 5, 9), fill=c, width=lw)
+            draw.line((w // 2, 14, w // 2, w - 3), fill=c, width=lw)
+        elif kind == "live_dot":
+            draw.ellipse((4, 4, w - 4, w - 4), fill=c)
+        else:
+            draw.ellipse((5, 5, w - 5, w - 5), outline=c, width=lw)
+
+        return ctk.CTkImage(img, size=(size, size))
     
 
     def build_ui(self):
@@ -10586,22 +10643,22 @@ class LiveDataPage(ctk.CTkFrame):
             border_width=1,
             border_color="#E0E0E0"
         )
-        header_card.pack(fill="x", padx=20, pady=(15, 10))
+        header_card.pack(fill="x", padx=20, pady=(10, 5))
         
-        # Red vertical accent bar on the left edge of the card
-        red_bar = ctk.CTkFrame(header_card, fg_color="#D32F2F", width=6, corner_radius=0)
-        red_bar.place(x=0, y=0, relheight=1)
+        # Green vertical accent bar on the left edge
+        green_bar = ctk.CTkFrame(header_card, fg_color="#007B43", width=6, corner_radius=0)
+        green_bar.place(x=0, y=0, relheight=1)
         
         # Header content
         header_content = ctk.CTkFrame(header_card, fg_color="transparent")
-        header_content.pack(fill="x", padx=(25, 20), pady=15)
+        header_content.pack(fill="x", padx=(25, 20), pady=10)
         
         # Title with icon
         title_frame = ctk.CTkFrame(header_content, fg_color="transparent")
         title_frame.pack(side="left")
         
-        # Rounded red square for logo
-        logo_frame = ctk.CTkFrame(title_frame, fg_color="#D32F2F", width=40, height=40, corner_radius=8)
+        # Rounded green square for logo
+        logo_frame = ctk.CTkFrame(title_frame, fg_color="#007B43", width=40, height=40, corner_radius=8)
         logo_frame.pack(side="left", padx=(0, 12))
         logo_frame.pack_propagate(False)
         
@@ -10609,31 +10666,20 @@ class LiveDataPage(ctk.CTkFrame):
         logo_lbl = ctk.CTkLabel(logo_frame, text="🍒", font=("Segoe UI", 18), text_color="white", fg_color="transparent")
         logo_lbl.pack(expand=True)
         
-        # Text container for title + subtitle
-        text_frame = ctk.CTkFrame(title_frame, fg_color="transparent")
-        text_frame.pack(side="left")
+        logo_lbl.configure(text="T", font=("Segoe UI", 24, "bold"))
         
         ctk.CTkLabel(
-            text_frame,
+            title_frame,
             text="Live Data Monitoring",
-            font=("Segoe UI", 18, "bold"),
-            text_color="#1A1A1A",
-            fg_color="transparent"
-        ).pack(anchor="w")
-        
-        ctk.CTkLabel(
-            text_frame,
-            text="Real-time AirGauge data and system status",
-            font=("Segoe UI", 11),
-            text_color="#757575",
-            fg_color="transparent"
-        ).pack(anchor="w")
+            font=("Segoe UI", 20, "bold"),
+            text_color="#007B43"
+        ).pack(side="left")
         
         # Status badge
         status_badge = ctk.CTkFrame(
             header_content,
             fg_color="#E8F5E9",
-            corner_radius=20
+            corner_radius=18
         )
         status_badge.pack(side="right", padx=10)
         
@@ -10643,24 +10689,45 @@ class LiveDataPage(ctk.CTkFrame):
             font=("Segoe UI", 11, "bold"),
             text_color="#43A047"
         ).pack(padx=15, pady=6)
+        for child in status_badge.winfo_children():
+            child.destroy()
+        self.live_dot_img = self._make_header_icon("live_dot", size=18, color="#00A95C")
+        ctk.CTkLabel(status_badge, image=self.live_dot_img, text="", fg_color="transparent").pack(side="left", padx=(14, 6), pady=8)
+        ctk.CTkLabel(status_badge, text="LIVE", font=("Segoe UI", 12, "bold"), text_color="#007B43").pack(side="left", padx=(0, 14), pady=8)
 
-        # Create custom headers row above table_frame
+        # Custom header frame, matching USB Data page
         self.header_row_frame = ctk.CTkFrame(self, fg_color="white", height=42, corner_radius=0)
         self.header_row_frame.pack(fill="x", padx=20, pady=(0, 0))
         self.header_row_frame.pack_propagate(False)
         
-        # Red border line under headers
-        self.border_line = ctk.CTkFrame(self, fg_color="#D32F2F", height=2, corner_radius=0)
-        self.border_line.pack(fill="x", padx=20, pady=(0, 10))
+        self.header_canvas = tk.Canvas(self.header_row_frame, bg="white", highlightthickness=0, height=42)
+        self.header_canvas.pack(side="left", fill="both", expand=True)
+        
+        self.header_inner_frame = tk.Frame(self.header_canvas, bg="white")
+        self.header_canvas.create_window(0, 0, window=self.header_inner_frame, anchor="nw")
+        
+        self.header_scrollbar_spacer = ctk.CTkFrame(
+            self.header_row_frame,
+            fg_color="white",
+            corner_radius=0,
+            width=16,
+            height=42
+        )
+        self.header_scrollbar_spacer.pack(side="right", fill="y")
+        
+        # Green border line under headers
+        self.border_line = ctk.CTkFrame(self, fg_color="#007B43", height=2, corner_radius=0)
+        self.border_line.pack(fill="x", padx=20, pady=(0, 5))
 
         # === Modern Table Container ===
         self.table_frame = ctk.CTkFrame(
             self,
             corner_radius=15,
             border_width=1,
-            border_color="#E0E0E0"
+            border_color="#E0E0E0",
+            height=250
         )
-        self.table_frame.pack(fill="both", expand=True, padx=20, pady=(0, 15))
+        self.table_frame.pack(fill="both", expand=True, padx=20, pady=(0, 10))
 
         # === Column Configuration ===
         cols = [
@@ -10673,10 +10740,7 @@ class LiveDataPage(ctk.CTkFrame):
             "Channel",
             "Drawing",
             "User ID",
-            "Component ID",  
-            "Item",
-            "CNC ID",
-            "Customer"
+            "Component ID"
         ]
 
         self.create_table(cols)
@@ -10727,6 +10791,7 @@ class LiveDataPage(ctk.CTkFrame):
         Create a live data table using tksheet if available, otherwise fallback to ttk.Treeview.
         Keeps tags/colors compatible with previous logic (evenrow/oddrow/mismatch).
         """
+        self.display_col_count = len(cols)
         # Holder grid
         for w in self.table_frame.winfo_children():
             try: w.destroy()
@@ -10749,17 +10814,19 @@ class LiveDataPage(ctk.CTkFrame):
             ("Customer", "🏢")
         ]
 
-        # Clear custom header frame children
-        for child in self.header_row_frame.winfo_children():
+        header_info = [header for header in header_info if header[0] in cols]
+
+        # Clear custom header inner frame children
+        for child in self.header_inner_frame.winfo_children():
             try: child.destroy()
             except: pass
 
         self.header_widgets = []
         
-        # Create custom header cells packed horizontally
+        # Create custom header cells packed horizontally inside self.header_inner_frame
         for name, emoji in header_info:
             cell = ctk.CTkFrame(
-                self.header_row_frame,
+                self.header_inner_frame,
                 fg_color="white",
                 corner_radius=0,
                 height=42,
@@ -10769,25 +10836,27 @@ class LiveDataPage(ctk.CTkFrame):
             cell.pack(side="left", fill="y")
             cell.pack_propagate(False)
             
+            content_frame = ctk.CTkFrame(cell, fg_color="transparent")
+            content_frame.pack(expand=True)
+            
+            icon_lbl = ctk.CTkLabel(
+                content_frame,
+                text=emoji,
+                font=("Segoe UI", 12, "normal"),
+                text_color="#007B43",
+                anchor="center"
+            )
+            icon_lbl.pack(side="left", padx=(0, 4))
+
             lbl = ctk.CTkLabel(
-                cell,
-                text=f"{emoji} {name}",
+                content_frame,
+                text=name,
                 font=("Segoe UI", 11, "bold"),
                 text_color="#1A1A1A",
                 anchor="center"
             )
-            lbl.pack(fill="both", expand=True, padx=5)
+            lbl.pack(side="left")
             self.header_widgets.append(cell)
-
-        # Right-side spacer to account for the vertical scrollbar width
-        self.header_scrollbar_spacer = ctk.CTkFrame(
-            self.header_row_frame,
-            fg_color="white",
-            corner_radius=0,
-            width=16,
-            height=42
-        )
-        self.header_scrollbar_spacer.pack(side="right", fill="y")
 
         self.use_tksheet = False
         try:
@@ -10818,7 +10887,7 @@ class LiveDataPage(ctk.CTkFrame):
                     # Deduct spacing for the vertical scrollbar
                     usable_w = total_w - 18
                     
-                    ratios = [0.08, 0.08, 0.08, 0.06, 0.07, 0.08, 0.07, 0.08, 0.07, 0.09, 0.09, 0.07, 0.10]
+                    ratios = [0.09, 0.10, 0.10, 0.09, 0.10, 0.12, 0.10, 0.10, 0.09, 0.11]
                     widths = [int(r * usable_w) for r in ratios]
                     # Adjust last column to match exactly
                     widths[-1] += usable_w - sum(widths)
@@ -10839,6 +10908,11 @@ class LiveDataPage(ctk.CTkFrame):
                     for idx, w in enumerate(widths):
                         if idx < len(self.header_widgets):
                             self.header_widgets[idx].configure(width=w)
+                    try:
+                        self.header_inner_frame.update_idletasks()
+                        self.header_canvas.configure(scrollregion=self.header_canvas.bbox("all"))
+                    except Exception:
+                        pass
                 except Exception as e:
                     print("Resize sheet error:", e)
 
@@ -10850,6 +10924,22 @@ class LiveDataPage(ctk.CTkFrame):
                 self.sheet.enable_bindings(("single_select", "row_select", "rc_select"))
             except Exception:
                 pass
+
+            try:
+                orig_xscroll = self.sheet.MT.cget("xscrollcommand")
+                def sync_scroll(first, last):
+                    if orig_xscroll:
+                        try:
+                            self.sheet.tk.eval(f"{orig_xscroll} {first} {last}")
+                        except Exception:
+                            pass
+                    try:
+                        self.header_canvas.xview_moveto(first)
+                    except Exception:
+                        pass
+                self.sheet.MT.configure(xscrollcommand=sync_scroll)
+            except Exception as e:
+                print("Failed to sync Live Data header scrollbar:", e)
 
             self.use_tksheet = True
             self._sheet_row_count = 0
@@ -10892,7 +10982,7 @@ class LiveDataPage(ctk.CTkFrame):
                         total_w = 800
                     
                     usable_w = total_w - 18
-                    ratios = [0.08, 0.08, 0.08, 0.06, 0.07, 0.08, 0.07, 0.08, 0.07, 0.09, 0.09, 0.07, 0.10]
+                    ratios = [0.09, 0.10, 0.10, 0.09, 0.10, 0.12, 0.10, 0.10, 0.09, 0.11]
                     widths = [int(r * usable_w) for r in ratios]
                     widths[-1] += usable_w - sum(widths)
                     
@@ -10904,6 +10994,11 @@ class LiveDataPage(ctk.CTkFrame):
                     for idx, w in enumerate(widths):
                         if idx < len(self.header_widgets):
                             self.header_widgets[idx].configure(width=w)
+                    try:
+                        self.header_inner_frame.update_idletasks()
+                        self.header_canvas.configure(scrollregion=self.header_canvas.bbox("all"))
+                    except Exception:
+                        pass
                 except Exception as e:
                     print("Resize tree error:", e)
 
@@ -10937,7 +11032,7 @@ class LiveDataPage(ctk.CTkFrame):
                 rows = []
                 for row in data:
                     self.serial_no += 1
-                    rows.append(row)
+                    rows.append(row[:getattr(self, "display_col_count", len(row))])
                 try:
                     self.sheet.set_sheet_data(rows)
                 except Exception:
@@ -10954,10 +11049,10 @@ class LiveDataPage(ctk.CTkFrame):
                     self.serial_no += 1
                     tag = "evenrow" if self.serial_no % 2 == 0 else "oddrow"
                     try:
-                        self.table.insert("", "end", values=row, tags=(tag,))
+                        self.table.insert("", "end", values=row[:getattr(self, "display_col_count", len(row))], tags=(tag,))
                     except Exception:
                         pass
-            self.rows = data
+            self.rows = [row[:getattr(self, "display_col_count", len(row))] for row in data]
         except Exception as e:
             print("Load error:", e)
     def save_to_file(self):
@@ -11134,6 +11229,7 @@ class LiveDataPage(ctk.CTkFrame):
                 cncID,
                 customer_name
             ]
+            display_values = values[:getattr(self, "display_col_count", len(values))]
 
             # Uses cached self.comp_json (performance optimization)
 
@@ -11153,9 +11249,9 @@ class LiveDataPage(ctk.CTkFrame):
             # ================ INSERT INTO TABLE =================
             if self.use_tksheet and self.sheet:
                 try:
-                    self.sheet.insert_row(data=values, index="end")
+                    self.sheet.insert_row(data=display_values, index="end")
                 except TypeError:
-                    self.sheet.insert_row(values)
+                    self.sheet.insert_row(display_values)
 
                 row_idx = self.sheet.get_total_rows() - 1
 
@@ -11169,11 +11265,11 @@ class LiveDataPage(ctk.CTkFrame):
 
             else:
                 tag = "mismatch" if mismatch else ("evenrow" if self.serial_no % 2 == 0 else "oddrow")
-                self.table.insert("", "end", values=values, tags=(tag,))
+                self.table.insert("", "end", values=display_values, tags=(tag,))
                 self.table.yview_moveto(1)
 
             # bookkeeping
-            self.rows.append(values)
+            self.rows.append(display_values)
             self.serial_no += 1
 
             if self.serial_no % 10 == 0:

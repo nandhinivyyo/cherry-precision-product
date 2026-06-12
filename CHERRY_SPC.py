@@ -521,25 +521,39 @@ class AdminLoginPage(ctk.CTkFrame):
         super().__init__(parent)
         self.controller = controller
 
-        self.configure(fg_color="#E8F5E9")
+        self.configure(fg_color="#F5F5F5")
 
         self.main_card = ctk.CTkFrame(self, fg_color="white", corner_radius=20, width=900, height=560)
         self.main_card.place(relx=0.5, rely=0.5, anchor="center")
         self.main_card.pack_propagate(False)
 
         # --- LEFT: BRANDING ---
-        self.left_panel = ctk.CTkFrame(self.main_card, fg_color="#2E7D32", corner_radius=20, width=400, height=560)
+        self.left_panel = ctk.CTkFrame(self.main_card, fg_color="#1B5E20", corner_radius=20, width=400, height=560)
         self.left_panel.place(x=0, y=0)
         self.left_panel.pack_propagate(False)
 
+        # Load cherry logo image
+        try:
+            logo_path = resource_path("cherry_precision_transparent.ico")
+            if os.path.exists(logo_path):
+                pil_img = Image.open(logo_path)
+                pil_img = pil_img.resize((140, 140), Image.Resampling.LANCZOS)
+                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(140, 140))
+                logo_lbl = ctk.CTkLabel(self.left_panel, text="", image=self.cherry_logo_img, fg_color="transparent")
+                logo_lbl.place(relx=0.5, rely=0.28, anchor="center")
+        except Exception as e:
+            print("Error loading cherry logo:", e)
+
         comp_name = SetupDatabase.get_company_name()
         ctk.CTkLabel(self.left_panel, text=comp_name,
-                     font=("Segoe UI", 24, "bold"), text_color="white",
-                     wraplength=380).place(relx=0.5, rely=0.3, anchor="center")
+                     font=("Segoe UI", 30, "bold"), text_color="white",
+                     wraplength=380).place(relx=0.5, rely=0.48, anchor="center")
+        
         ctk.CTkLabel(self.left_panel, text="Air Gauge Management",
-                     font=("Segoe UI", 18, "bold"), text_color="#A5D6A7").place(relx=0.5, rely=0.4, anchor="center")
-        ctk.CTkLabel(self.left_panel, text="System Locked",
-                     font=("Segoe UI", 13, "bold"), text_color="#C8E6C9").place(relx=0.5, rely=0.9, anchor="center")
+                     font=("Segoe UI", 16), text_color="#A5D6A7").place(relx=0.5, rely=0.56, anchor="center")
+        
+        ctk.CTkLabel(self.left_panel, text="🔒  System Locked",
+                     font=("Segoe UI", 13, "bold"), text_color="#C8E6C9").place(relx=0.5, rely=0.88, anchor="center")
 
         # --- RIGHT: LOGIN FORM ---
         self.right_panel = ctk.CTkFrame(self.main_card, fg_color="white", corner_radius=20, width=500, height=560)
@@ -548,22 +562,97 @@ class AdminLoginPage(ctk.CTkFrame):
         self.login_form = ctk.CTkFrame(self.right_panel, fg_color="transparent", width=400, height=450)
         self.login_form.place(relx=0.5, rely=0.48, anchor="center")
 
-        ctk.CTkLabel(self.login_form, text="Admin Login",
-                     font=("Segoe UI", 24, "bold"), text_color="#333").pack(pady=(0, 5))
-        ctk.CTkLabel(self.login_form, text="Enter your credentials to continue",
-                     font=("Segoe UI", 11), text_color="#757575").pack(pady=(0, 22))
+        title_frame = ctk.CTkFrame(self.login_form, fg_color="transparent")
+        title_frame.pack(pady=(0, 2))
+        
+        ctk.CTkLabel(title_frame, text="Admin ", font=("Segoe UI", 24, "bold"), text_color="#333").pack(side="left")
+        ctk.CTkLabel(title_frame, text="Login", font=("Segoe UI", 24, "bold"), text_color="#D32F2F").pack(side="left")
 
-        self.user_entry = ctk.CTkEntry(self.login_form, placeholder_text="Admin Username",
-                                       height=50, width=300, font=("Segoe UI", 13),
-                                       border_color="#E0E0E0", corner_radius=8)
-        self.user_entry.pack(pady=8)
+        ctk.CTkLabel(self.login_form, text="Enter your credentials to continue",
+                     font=("Segoe UI", 11), text_color="#757575").pack(pady=(0, 25))
+
+        # Username Field Container
+        user_container = ctk.CTkFrame(self.login_form, fg_color="white", border_color="#E0E0E0", border_width=1, corner_radius=8, height=48, width=300)
+        user_container.pack(pady=8)
+        user_container.pack_propagate(False)
+
+        user_icon = ctk.CTkLabel(user_container, text="👤", font=("Segoe UI", 16), text_color="#757575", fg_color="transparent")
+        user_icon.pack(side="left", padx=(12, 5))
+
+        self.user_entry = tk.Entry(user_container, relief="flat", bd=0, bg="white", fg="#333",
+                                   selectbackground="#1976D2", selectforeground="white",
+                                   font=("Segoe UI", 13), insertbackground="#333")
+        self.user_entry.pack(side="left", fill="x", expand=True, padx=(2, 12), pady=12)
         self.user_entry.focus()
 
-        self.pass_entry = ctk.CTkEntry(self.login_form, placeholder_text="Password",
-                                       show="●", height=50, width=300,
-                                       font=("Segoe UI", 13), border_color="#E0E0E0", corner_radius=8)
-        self.pass_entry.pack(pady=8)
+        # Username Placeholder label
+        user_placeholder = ctk.CTkLabel(user_container, text="Admin Username", font=("Segoe UI", 13), text_color="#9E9E9E", fg_color="transparent")
+        user_placeholder.place(x=40, y=24, anchor="w")
+        user_placeholder.bind("<Button-1>", lambda e: self.user_entry.focus())
 
+        def on_user_key(event=None):
+            self.after(10, check_user_placeholder)
+
+        def check_user_placeholder():
+            if self.user_entry.get():
+                user_placeholder.place_forget()
+            else:
+                user_placeholder.place(x=40, y=24, anchor="w")
+
+        self.user_entry.bind("<KeyRelease>", on_user_key)
+
+        # Password Field Container
+        pass_container = ctk.CTkFrame(self.login_form, fg_color="white", border_color="#E0E0E0", border_width=1, corner_radius=8, height=48, width=300)
+        pass_container.pack(pady=8)
+        pass_container.pack_propagate(False)
+
+        pass_icon = ctk.CTkLabel(pass_container, text="🔒", font=("Segoe UI", 16), text_color="#757575", fg_color="transparent")
+        pass_icon.pack(side="left", padx=(12, 5))
+
+        self.pass_entry = tk.Entry(pass_container, relief="flat", bd=0, bg="white", fg="#333",
+                                   selectbackground="#1976D2", selectforeground="white",
+                                   font=("Segoe UI", 13), insertbackground="#333", show="●")
+        self.pass_entry.pack(side="left", fill="x", expand=True, padx=(2, 5), pady=12)
+
+        # Password Placeholder label
+        pass_placeholder = ctk.CTkLabel(pass_container, text="Password", font=("Segoe UI", 13), text_color="#9E9E9E", fg_color="transparent")
+        pass_placeholder.place(x=40, y=24, anchor="w")
+        pass_placeholder.bind("<Button-1>", lambda e: self.pass_entry.focus())
+
+        def on_pass_key(event=None):
+            self.after(10, check_pass_placeholder)
+
+        def check_pass_placeholder():
+            if self.pass_entry.get():
+                pass_placeholder.place_forget()
+            else:
+                pass_placeholder.place(x=40, y=24, anchor="w")
+
+        self.pass_entry.bind("<KeyRelease>", on_pass_key)
+
+        # Show/Hide eye button
+        self.show_pass = False
+        def toggle_pass_visibility():
+            self.show_pass = not self.show_pass
+            if self.show_pass:
+                self.pass_entry.config(show="")
+                eye_btn.configure(text="👁")
+            else:
+                self.pass_entry.config(show="●")
+                eye_btn.configure(text="👁‍🗨")
+
+        eye_btn = ctk.CTkLabel(pass_container, text="👁‍🗨", font=("Segoe UI", 16), text_color="#757575", fg_color="transparent", cursor="hand2")
+        eye_btn.pack(side="right", padx=(5, 12))
+        eye_btn.bind("<Button-1>", lambda e: toggle_pass_visibility())
+
+        # Focus ring bindings
+        self.user_entry.bind("<FocusIn>", lambda e: [user_container.configure(border_color="#1976D2"), user_placeholder.place_forget()])
+        self.user_entry.bind("<FocusOut>", lambda e: [user_container.configure(border_color="#E0E0E0"), check_user_placeholder()])
+        
+        self.pass_entry.bind("<FocusIn>", lambda e: [pass_container.configure(border_color="#1976D2"), pass_placeholder.place_forget()])
+        self.pass_entry.bind("<FocusOut>", lambda e: [pass_container.configure(border_color="#E0E0E0"), check_pass_placeholder()])
+
+        # Return bindings
         self.user_entry.bind("<Return>", lambda event: self.pass_entry.focus())
         self.pass_entry.bind("<Return>", lambda event: self.check_login())
 
@@ -571,20 +660,20 @@ class AdminLoginPage(ctk.CTkFrame):
                                         font=("Segoe UI", 11))
         self.error_label.pack(pady=(6, 2))
 
-        self.login_btn = ModernButton(self.login_form, text="UNLOCK SYSTEM",
+        self.login_btn = ModernButton(self.login_form, text="🔒  UNLOCK SYSTEM",
                                        font=("Segoe UI", 13, "bold"),
-                                       height=50, width=300,
-                                       fg_color="#2E7D32", hover_color="#1B5E20",
+                                       height=48, width=300,
+                                       fg_color="#C62828", hover_color="#B71C1C",
                                        corner_radius=8,
                                        command=self.check_login)
-        self.login_btn.pack(pady=14)
+        self.login_btn.pack(pady=15)
 
         # ── Forgot Password link ──────────────────────────────
         forgot_lbl = ctk.CTkLabel(
             self.login_form, 
             text="🔑  Forgot Password?",
             font=("Segoe UI", 11, "underline"),
-            text_color="#1976D2",
+            text_color="#2E7D32",
             cursor="hand2"
         )
         forgot_lbl.pack(pady=(0, 4))

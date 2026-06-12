@@ -345,14 +345,24 @@ class InstallerLoginPage(ctk.CTkFrame):
         self.left_panel.place(x=0, y=0)
         self.left_panel.pack_propagate(False)
         
-        # Ensure left panel has sharp right signal (optional, just keep rounded for now)
+        # Load cherry logo image
+        try:
+            logo_path = resource_path("settings/cherry_signup_logo.png")
+            if os.path.exists(logo_path):
+                pil_img = Image.open(logo_path)
+                pil_img = pil_img.resize((220, 64), Image.Resampling.LANCZOS)
+                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(220, 64))
+                logo_lbl = ctk.CTkLabel(self.left_panel, text="", image=self.cherry_logo_img, fg_color="transparent")
+                logo_lbl.place(relx=0.5, rely=0.18, anchor="center")
+        except Exception as e:
+            print("Error loading setup cherry logo:", e)
         
         # Branding Text
         ctk.CTkLabel(self.left_panel, text="Cherry Protocol", 
-                     font=("Segoe UI", 24, "bold"), text_color="white").place(relx=0.5, rely=0.3, anchor="center")
+                     font=("Segoe UI", 24, "bold"), text_color="white").place(relx=0.5, rely=0.34, anchor="center")
         
         ctk.CTkLabel(self.left_panel, text="Precision Air Gauge System", 
-                     font=("Segoe UI", 18, "bold"), text_color="#E3F2FD").place(relx=0.5, rely=0.38, anchor="center")
+                     font=("Segoe UI", 18, "bold"), text_color="#E3F2FD").place(relx=0.5, rely=0.42, anchor="center")
         
         ctk.CTkLabel(self.left_panel, text="Installer Access", 
                      font=("Segoe UI", 13, "bold"), text_color="#BBDEFB").place(relx=0.5, rely=0.9, anchor="center")
@@ -434,18 +444,30 @@ class LicenseVerificationPage(ctk.CTkFrame):
         self.left_panel.place(x=0, y=0)
         self.left_panel.pack_propagate(False)
         
+        # Load cherry logo image
+        try:
+            logo_path = resource_path("settings/cherry_signup_logo.png")
+            if os.path.exists(logo_path):
+                pil_img = Image.open(logo_path)
+                pil_img = pil_img.resize((220, 64), Image.Resampling.LANCZOS)
+                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(220, 64))
+                logo_lbl = ctk.CTkLabel(self.left_panel, text="", image=self.cherry_logo_img, fg_color="transparent")
+                logo_lbl.place(relx=0.5, rely=0.18, anchor="center")
+        except Exception as e:
+            print("Error loading setup cherry logo:", e)
+        
         ctk.CTkLabel(self.left_panel, text="Step 2", 
-                     font=("Segoe UI", 24, "bold"), text_color="white").place(relx=0.5, rely=0.3, anchor="center")
+                     font=("Segoe UI", 24, "bold"), text_color="white").place(relx=0.5, rely=0.34, anchor="center")
         
         ctk.CTkLabel(self.left_panel, text="License Verification", 
-                     font=("Segoe UI", 18, "bold"), text_color="#E3F2FD").place(relx=0.5, rely=0.38, anchor="center")
+                     font=("Segoe UI", 18, "bold"), text_color="#E3F2FD").place(relx=0.5, rely=0.42, anchor="center")
         
         info_text = ("Almost there!\n\nPlease upload the system\n"
                      "license file provided by\n"
                      "the manufacturer to proceed.")
         
         ctk.CTkLabel(self.left_panel, text=info_text, 
-                     font=("Segoe UI", 13), text_color="#BBDEFB", justify="center").place(relx=0.5, rely=0.55, anchor="center")
+                     font=("Segoe UI", 13), text_color="#BBDEFB", justify="center").place(relx=0.5, rely=0.62, anchor="center")
 
         # --- RIGHT SIDE: VERIFICATION ---
         self.right_panel = ctk.CTkFrame(self.main_card, fg_color="white", corner_radius=20, width=500, height=550)
@@ -533,69 +555,83 @@ class AdminLoginPage(ctk.CTkFrame):
         self.main_card.place(relx=0.5, rely=0.5, anchor="center")
         self.main_card.pack_propagate(False)
 
-        # --- LEFT: BRANDING ---
-        self.left_panel = ctk.CTkFrame(self.main_card, fg_color="#1B5E20", corner_radius=20, width=400, height=560)
-        self.left_panel.place(x=0, y=0)
-        self.left_panel.pack_propagate(False)
+        # ── LEFT: Unified contact info & wavy separator ─────────────────
+        left_canvas = tk.Canvas(self.main_card, width=370, height=560, bg="white", highlightthickness=0)
+        left_canvas.place(x=0, y=0)
 
-        # Load cherry logo image
-        try:
-            logo_path = resource_path("settings/cherry_login_logo.png")
-            if not os.path.exists(logo_path):
-                logo_path = resource_path("cherry_precision_transparent.ico")
-            if os.path.exists(logo_path):
-                pil_img = Image.open(logo_path)
-                width, height = pil_img.size
-                aspect = width / height
-                target_height = 140
-                target_width = int(target_height * aspect)
-                if target_width > 200:
-                    target_width = 200
-                    target_height = int(target_width / aspect)
-                pil_img = pil_img.resize((target_width, target_height), Image.Resampling.LANCZOS)
-                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(target_width, target_height))
-                logo_lbl = ctk.CTkLabel(self.left_panel, text="", image=self.cherry_logo_img, fg_color="transparent")
-                logo_lbl.place(relx=0.5, rely=0.28, anchor="center")
-        except Exception as e:
-            print("Error loading cherry logo:", e)
+        # Draw shadow line
+        shadow_points = []
+        for y in range(0, 565, 5):
+            import math
+            x = 330 + 20 * math.sin(y * 2 * math.pi / 560) + 4
+            shadow_points.extend((x, y))
+        left_canvas.create_line(shadow_points, fill="#F0F0F0", width=4, smooth=True)
 
-        comp_name = SetupDatabase.get_company_name()
-        ctk.CTkLabel(self.left_panel, text=comp_name,
-                     font=("Segoe UI", 30, "bold"), text_color="white",
-                     wraplength=380).place(relx=0.5, rely=0.48, anchor="center")
-        
-        ctk.CTkLabel(self.left_panel, text="Air Gauge Management",
-                     font=("Segoe UI", 16), text_color="#A5D6A7").place(relx=0.5, rely=0.56, anchor="center")
-        
-        ctk.CTkLabel(self.left_panel, text="🔒  System Locked",
-                     font=("Segoe UI", 13, "bold"), text_color="#C8E6C9").place(relx=0.5, rely=0.88, anchor="center")
+        # Draw green background area with S-curve boundary on the right
+        points_green = [(0, 0)]
+        for y in range(0, 285, 5):
+            x = 330 + 20 * math.sin(y * 2 * math.pi / 560)
+            points_green.append((x, y))
+        points_green.append((0, 400))
+        flat_green = []
+        for pt in points_green:
+            flat_green.extend(pt)
+        left_canvas.create_polygon(flat_green, fill="#1B5E20", outline="#1B5E20")
+
+        # Draw red ribbon line
+        points_red = [(0, 400)]
+        for y in range(280, 565, 5):
+            x = 330 + 20 * math.sin(y * 2 * math.pi / 560)
+            points_red.append((x, y))
+        points_red.append((0, 560))
+        flat_red = []
+        for pt in points_red:
+            flat_red.extend(pt)
+        left_canvas.create_polygon(flat_red, fill="#B71C1C", outline="#B71C1C")
+
+        # Draw smooth white border line over boundary
+        line_points = []
+        for y in range(0, 565, 5):
+            x = 330 + 20 * math.sin(y * 2 * math.pi / 560)
+            line_points.extend((x, y))
+        left_canvas.create_line(line_points, fill="white", width=4, smooth=True)
 
         # --- RIGHT: LOGIN FORM ---
-        self.right_panel = ctk.CTkFrame(self.main_card, fg_color="white", corner_radius=20, width=500, height=560)
-        self.right_panel.place(x=400, y=0)
+        self.right_panel = ctk.CTkFrame(self.main_card, fg_color="white", corner_radius=20, width=530, height=560)
+        self.right_panel.place(x=370, y=0)
+        self.right_panel.pack_propagate(False)
 
-        self.login_form = ctk.CTkFrame(self.right_panel, fg_color="transparent", width=400, height=450)
-        self.login_form.place(relx=0.5, rely=0.48, anchor="center")
+        # Logo at top
+        try:
+            logo_path = resource_path("settings/cherry_signup_logo.png")
+            if os.path.exists(logo_path):
+                pil_img = Image.open(logo_path)
+                pil_img = pil_img.resize((200, 58), Image.Resampling.LANCZOS)
+                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(200, 58))
+                logo_lbl = ctk.CTkLabel(self.right_panel, text="", image=self.cherry_logo_img, fg_color="transparent")
+                logo_lbl.pack(pady=(45, 5))
+        except Exception as e:
+            print("Error loading cherry logo in login:", e)
 
-        title_frame = ctk.CTkFrame(self.login_form, fg_color="transparent")
-        title_frame.pack(pady=(0, 2))
-        
-        ctk.CTkLabel(title_frame, text="Admin ", font=("Segoe UI", 24, "bold"), text_color="#333").pack(side="left")
-        ctk.CTkLabel(title_frame, text="Login", font=("Segoe UI", 24, "bold"), text_color="#D32F2F").pack(side="left")
+        ctk.CTkLabel(self.right_panel, text="Air Gauge Management",
+                     font=("Segoe UI", 11, "bold"), text_color="#1B5E20").pack(pady=(0, 20))
 
-        ctk.CTkLabel(self.login_form, text="Enter your credentials to continue",
-                     font=("Segoe UI", 11), text_color="#757575").pack(pady=(0, 25))
+        ctk.CTkLabel(self.right_panel, text="Admin Login",
+                     font=("Segoe UI", 22, "bold"), text_color="#1A1A1A").pack(pady=(0, 2))
+
+        ctk.CTkLabel(self.right_panel, text="Enter your credentials to continue",
+                     font=("Segoe UI", 11), text_color="#757575").pack(pady=(0, 20))
 
         # Username Field Container
-        user_container = ctk.CTkFrame(self.login_form, fg_color="white", border_color="#E0E0E0", border_width=1, corner_radius=8, height=48, width=300)
-        user_container.pack(pady=8)
+        user_container = ctk.CTkFrame(self.right_panel, fg_color="white", border_color="#E0E0E0", border_width=1, corner_radius=8, height=48, width=320)
+        user_container.pack(pady=6)
         user_container.pack_propagate(False)
 
         user_icon = ctk.CTkLabel(user_container, text="👤", font=("Segoe UI", 16), text_color="#757575", fg_color="transparent")
         user_icon.pack(side="left", padx=(12, 5))
 
         self.user_entry = tk.Entry(user_container, relief="flat", bd=0, bg="white", fg="#333",
-                                   selectbackground="#1976D2", selectforeground="white",
+                                   selectbackground="#D32F2F", selectforeground="white",
                                    font=("Segoe UI", 13), insertbackground="#333")
         self.user_entry.pack(side="left", fill="x", expand=True, padx=(2, 12), pady=12)
         self.user_entry.focus()
@@ -617,15 +653,15 @@ class AdminLoginPage(ctk.CTkFrame):
         self.user_entry.bind("<KeyRelease>", on_user_key)
 
         # Password Field Container
-        pass_container = ctk.CTkFrame(self.login_form, fg_color="white", border_color="#E0E0E0", border_width=1, corner_radius=8, height=48, width=300)
-        pass_container.pack(pady=8)
+        pass_container = ctk.CTkFrame(self.right_panel, fg_color="white", border_color="#E0E0E0", border_width=1, corner_radius=8, height=48, width=320)
+        pass_container.pack(pady=6)
         pass_container.pack_propagate(False)
 
         pass_icon = ctk.CTkLabel(pass_container, text="🔒", font=("Segoe UI", 16), text_color="#757575", fg_color="transparent")
         pass_icon.pack(side="left", padx=(12, 5))
 
         self.pass_entry = tk.Entry(pass_container, relief="flat", bd=0, bg="white", fg="#333",
-                                   selectbackground="#1976D2", selectforeground="white",
+                                   selectbackground="#D32F2F", selectforeground="white",
                                    font=("Segoe UI", 13), insertbackground="#333")
         self.pass_entry.pack(side="left", fill="x", expand=True, padx=(2, 5), pady=12)
 
@@ -664,41 +700,41 @@ class AdminLoginPage(ctk.CTkFrame):
         eye_btn.bind("<Button-1>", lambda e: toggle_pass_visibility())
 
         # Focus ring bindings
-        self.user_entry.bind("<FocusIn>", lambda e: [user_container.configure(border_color="#1976D2"), user_placeholder.place_forget()])
+        self.user_entry.bind("<FocusIn>", lambda e: [user_container.configure(border_color="#D32F2F"), user_placeholder.place_forget()])
         self.user_entry.bind("<FocusOut>", lambda e: [user_container.configure(border_color="#E0E0E0"), check_user_placeholder()])
         
-        self.pass_entry.bind("<FocusIn>", lambda e: [pass_container.configure(border_color="#1976D2"), pass_placeholder.place_forget()])
+        self.pass_entry.bind("<FocusIn>", lambda e: [pass_container.configure(border_color="#D32F2F"), pass_placeholder.place_forget()])
         self.pass_entry.bind("<FocusOut>", lambda e: [pass_container.configure(border_color="#E0E0E0"), check_pass_placeholder()])
 
         # Return bindings
         self.user_entry.bind("<Return>", lambda event: self.pass_entry.focus())
         self.pass_entry.bind("<Return>", lambda event: self.check_login())
 
-        self.error_label = ctk.CTkLabel(self.login_form, text="", text_color="#D32F2F",
-                                        font=("Segoe UI", 11))
-        self.error_label.pack(pady=(6, 2))
+        self.error_label = ctk.CTkLabel(self.right_panel, text="", text_color="#D32F2F",
+                                        font=("Segoe UI", 11), fg_color="transparent")
+        self.error_label.pack(pady=(4, 2))
 
-        self.login_btn = ModernButton(self.login_form, text="🔒  UNLOCK SYSTEM",
+        self.login_btn = ModernButton(self.right_panel, text="UNLOCK SYSTEM",
                                        font=("Segoe UI", 13, "bold"),
-                                       height=48, width=300,
-                                       fg_color="#C62828", hover_color="#B71C1C",
+                                       height=48, width=320,
+                                       fg_color="#B71C1C", hover_color="#9E0F0F",
                                        corner_radius=8,
                                        command=self.check_login)
-        self.login_btn.pack(pady=15)
+        self.login_btn.pack(pady=10)
 
         # ── Forgot Password link ──────────────────────────────
         forgot_lbl = ctk.CTkLabel(
-            self.login_form, 
+            self.right_panel, 
             text="🔑  Forgot Password?",
             font=("Segoe UI", 11, "underline"),
-            text_color="#2E7D32",
+            text_color="#1B5E20",
             cursor="hand2"
         )
-        forgot_lbl.pack(pady=(0, 4))
+        forgot_lbl.pack(pady=(5, 10))
         forgot_lbl.bind("<Button-1>", lambda e: self.open_forgot_password())
 
         ctk.CTkLabel(self.right_panel, text="Secure Terminal v1.0",
-                     font=("Segoe UI", 11), text_color="#9E9E9E").place(relx=0.5, rely=0.95, anchor="center")
+                     font=("Segoe UI", 11), text_color="#9E9E9E").pack(side="bottom", pady=25)
 
     def _validate_pass_input(self, action, index, value_if_allowed, prior_value, text_inserted_deleted):
         idx = int(index)
@@ -1795,12 +1831,24 @@ class OrganizationSetupPage(ctk.CTkFrame):
         self.left_panel.place(x=0, y=0)
         self.left_panel.pack_propagate(False)
         
+        # Load cherry logo image
+        try:
+            logo_path = resource_path("settings/cherry_signup_logo.png")
+            if os.path.exists(logo_path):
+                pil_img = Image.open(logo_path)
+                pil_img = pil_img.resize((220, 64), Image.Resampling.LANCZOS)
+                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(220, 64))
+                logo_lbl = ctk.CTkLabel(self.left_panel, text="", image=self.cherry_logo_img, fg_color="transparent")
+                logo_lbl.place(relx=0.5, rely=0.15, anchor="center")
+        except Exception as e:
+            print("Error loading setup cherry logo:", e)
+        
         # Content Left
         ctk.CTkLabel(self.left_panel, text="Setup Wizard", 
-                     font=("Segoe UI", 24, "bold"), text_color="white").place(relx=0.5, rely=0.2, anchor="center")
+                     font=("Segoe UI", 24, "bold"), text_color="white").place(relx=0.5, rely=0.30, anchor="center")
         
         ctk.CTkLabel(self.left_panel, text="Step 1: Organization", 
-                     font=("Segoe UI", 18, "bold"), text_color="#BBDEFB").place(relx=0.5, rely=0.28, anchor="center")
+                     font=("Segoe UI", 18, "bold"), text_color="#BBDEFB").place(relx=0.5, rely=0.38, anchor="center")
         
         info_text = ("Welcome to your Air Gauge System.\n\n"
                      "Please provide the company details.\n\n"
@@ -1808,7 +1856,7 @@ class OrganizationSetupPage(ctk.CTkFrame):
                      "in the application settings.")
         
         ctk.CTkLabel(self.left_panel, text=info_text, 
-                     font=("Segoe UI", 13), text_color="#E3F2FD", justify="center").place(relx=0.5, rely=0.5, anchor="center")
+                     font=("Segoe UI", 13), text_color="#E3F2FD", justify="center").place(relx=0.5, rely=0.58, anchor="center")
 
         # --- RIGHT SIDE: FORM ---
         self.right_panel = ctk.CTkFrame(self.main_card, fg_color="white", corner_radius=20, width=600, height=600)
@@ -1889,18 +1937,30 @@ class AdminSetupPage(ctk.CTkFrame):
         self.left_panel.place(x=0, y=0)
         self.left_panel.pack_propagate(False)
         
+        # Load cherry logo image
+        try:
+            logo_path = resource_path("settings/cherry_signup_logo.png")
+            if os.path.exists(logo_path):
+                pil_img = Image.open(logo_path)
+                pil_img = pil_img.resize((220, 64), Image.Resampling.LANCZOS)
+                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(220, 64))
+                logo_lbl = ctk.CTkLabel(self.left_panel, text="", image=self.cherry_logo_img, fg_color="transparent")
+                logo_lbl.place(relx=0.5, rely=0.15, anchor="center")
+        except Exception as e:
+            print("Error loading setup cherry logo:", e)
+        
         ctk.CTkLabel(self.left_panel, text="Setup Wizard", 
-                     font=("Segoe UI", 24, "bold"), text_color="white").place(relx=0.5, rely=0.2, anchor="center")
+                     font=("Segoe UI", 24, "bold"), text_color="white").place(relx=0.5, rely=0.30, anchor="center")
         
         ctk.CTkLabel(self.left_panel, text="Step 2: Administrator", 
-                     font=("Segoe UI", 18, "bold"), text_color="#BBDEFB").place(relx=0.5, rely=0.28, anchor="center")
+                     font=("Segoe UI", 18, "bold"), text_color="#BBDEFB").place(relx=0.5, rely=0.38, anchor="center")
         
         info_text = ("Set up the primary admin account.\n\n"
                      "This account will be used to access\n"
                      "system settings and configurations.")
         
         ctk.CTkLabel(self.left_panel, text=info_text, 
-                     font=("Segoe UI", 13), text_color="#E3F2FD", justify="center").place(relx=0.5, rely=0.5, anchor="center")
+                     font=("Segoe UI", 13), text_color="#E3F2FD", justify="center").place(relx=0.5, rely=0.58, anchor="center")
 
         # --- RIGHT SIDE: FORM ---
         self.right_panel = ctk.CTkFrame(self.main_card, fg_color="white", corner_radius=20, width=600, height=600)

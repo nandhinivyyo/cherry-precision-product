@@ -88,6 +88,63 @@ class ModernButton(ctk.CTkButton):
                 if isinstance(hover_color, str) and hover_color.startswith("#"):
                     self.hover_anim.hover_color = hover_color
 
+class SidebarButton(ctk.CTkFrame):
+    def __init__(self, parent, symbol, word, command, **kwargs):
+        super().__init__(parent, fg_color="transparent", corner_radius=8, height=48, **kwargs)
+        self.pack_propagate(False)
+        self.command = command
+        self.symbol = symbol
+        self.word = word
+        
+        self.symbol_lbl = ctk.CTkLabel(
+            self,
+            text=symbol,
+            font=("Segoe UI", 16),
+            text_color="#007B43",
+            anchor="center",
+            width=40
+        )
+        self.symbol_lbl.pack(side="left", padx=(10, 5), fill="y")
+        
+        self.word_lbl = ctk.CTkLabel(
+            self,
+            text=word,
+            font=("Segoe UI", 13, "bold"),
+            text_color="#1A1A1A",
+            anchor="w"
+        )
+        self.word_lbl.pack(side="left", fill="both", expand=True)
+        
+        # Bind events
+        for widget in (self, self.symbol_lbl, self.word_lbl):
+            widget.bind("<Enter>", self.on_enter)
+            widget.bind("<Leave>", self.on_leave)
+            widget.bind("<Button-1>", self.on_click)
+            
+        self.active = False
+        
+    def on_enter(self, event):
+        if not self.active:
+            self.configure(fg_color="#F1F8E9") # Light green hover
+            
+    def on_leave(self, event):
+        if not self.active:
+            self.configure(fg_color="transparent")
+            
+    def on_click(self, event):
+        self.command()
+        
+    def set_active(self, active):
+        self.active = active
+        if active:
+            self.configure(fg_color="#007B43")
+            self.symbol_lbl.configure(text_color="white")
+            self.word_lbl.configure(text_color="white")
+        else:
+            self.configure(fg_color="transparent")
+            self.symbol_lbl.configure(text_color="#007B43")
+            self.word_lbl.configure(text_color="#1A1A1A")
+
 def make_sheet_auto_resize(sheet_obj, frame_obj, cols):
     """Binds configure event of frame_obj to resize columns of sheet_obj to fit 100%."""
     def do_resize(event=None):
@@ -350,8 +407,7 @@ class InstallerLoginPage(ctk.CTkFrame):
             logo_path = resource_path("settings/cherry_signup_logo.png")
             if os.path.exists(logo_path):
                 pil_img = Image.open(logo_path)
-                pil_img = pil_img.resize((220, 64), Image.Resampling.LANCZOS)
-                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(220, 64))
+                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(180, 86))
                 logo_lbl = ctk.CTkLabel(self.left_panel, text="", image=self.cherry_logo_img, fg_color="transparent")
                 logo_lbl.place(relx=0.5, rely=0.18, anchor="center")
         except Exception as e:
@@ -449,8 +505,7 @@ class LicenseVerificationPage(ctk.CTkFrame):
             logo_path = resource_path("settings/cherry_signup_logo.png")
             if os.path.exists(logo_path):
                 pil_img = Image.open(logo_path)
-                pil_img = pil_img.resize((220, 64), Image.Resampling.LANCZOS)
-                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(220, 64))
+                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(180, 86))
                 logo_lbl = ctk.CTkLabel(self.left_panel, text="", image=self.cherry_logo_img, fg_color="transparent")
                 logo_lbl.place(relx=0.5, rely=0.18, anchor="center")
         except Exception as e:
@@ -534,6 +589,105 @@ class LicenseVerificationPage(ctk.CTkFrame):
                 self.error_label.configure(text=f"Error reading file: {str(e)}")
 
 
+def bezier_curve(p0, p1, p2, p3, num_points=100):
+    points = []
+    for i in range(num_points + 1):
+        t = i / num_points
+        x = (1-t)**3 * p0[0] + 3*(1-t)**2 * t * p1[0] + 3*(1-t)*t**2 * p2[0] + t**3 * p3[0]
+        y = (1-t)**3 * p0[1] + 3*(1-t)**2 * t * p1[1] + 3*(1-t)*t**2 * p2[1] + t**3 * p3[1]
+        points.append((x, y))
+    return points
+
+def generate_panel_image(width, height):
+    from PIL import ImageFilter
+    scale = 4
+    sw = width * scale
+    sh = height * scale
+    
+    red_layer = Image.new("RGBA", (sw, sh), (0, 0, 0, 0))
+    green_layer = Image.new("RGBA", (sw, sh), (0, 0, 0, 0))
+    shadow_layer = Image.new("RGBA", (sw, sh), (0, 0, 0, 0))
+    
+    draw_red = ImageDraw.Draw(red_layer)
+    draw_green = ImageDraw.Draw(green_layer)
+    draw_shadow = ImageDraw.Draw(shadow_layer)
+    
+    # Red Shape (Triangular, overlapping under green)
+    red_p0 = (0, 250 * scale)
+    red_p1 = (80 * scale, 270 * scale)
+    red_p2 = (160 * scale, 300 * scale)
+    red_p3 = (215 * scale, 340 * scale) # Right vertex
+    red_curve1 = bezier_curve(red_p0, red_p1, red_p2, red_p3)
+    
+    red_p4 = (215 * scale, 340 * scale)
+    red_p5 = (180 * scale, 420 * scale)
+    red_p6 = (160 * scale, 520 * scale)
+    red_p7 = (130 * scale, sh) # Bottom edge
+    red_curve2 = bezier_curve(red_p4, red_p5, red_p6, red_p7)
+    
+    red_poly = [(0, 250 * scale)] + red_curve1 + red_curve2 + [(0, sh)]
+    
+    # Green Shape (Triangular fold)
+    green_p0 = (110 * scale, 0)
+    green_p1 = (140 * scale, 60 * scale)
+    green_p2 = (180 * scale, 140 * scale)
+    green_p3 = (200 * scale, 240 * scale) # Right vertex
+    green_curve1 = bezier_curve(green_p0, green_p1, green_p2, green_p3)
+    
+    green_p4 = (200 * scale, 240 * scale)
+    green_p5 = (150 * scale, 270 * scale)
+    green_p6 = (80 * scale, 310 * scale)
+    green_p7 = (0, 310 * scale) # Left edge
+    green_curve2 = bezier_curve(green_p4, green_p5, green_p6, green_p7)
+    
+    green_poly = [(0, 0)] + [(110 * scale, 0)] + green_curve1 + green_curve2 + [(0, 310 * scale)]
+    
+    # Shadow for Red Shape
+    draw_shadow.polygon(red_poly, fill=(0, 0, 0, 40))
+    
+    # Shadow for Green Shape (casts shadow onto the red shape)
+    draw_shadow.polygon(green_poly, fill=(0, 0, 0, 50))
+    
+    # Blur the shadow layer
+    blurred_shadow = shadow_layer.filter(ImageFilter.GaussianBlur(radius=6 * scale))
+    
+    # Offset shadow slightly
+    shadow_offset = Image.new("RGBA", (sw, sh), (0, 0, 0, 0))
+    shadow_offset.paste(blurred_shadow, (int(3 * scale), int(3 * scale)))
+    
+    # Draw Red Shape
+    red_color = (176, 5, 14, 255) # #B0050E
+    draw_red.polygon(red_poly, fill=red_color)
+    
+    # Draw Green Shape with white outline highlight along both curves
+    green_color = (32, 81, 36, 255) # #205124
+    
+    green_outline_points = green_curve1 + green_curve2
+    draw_green.line(green_outline_points, fill=(255, 255, 255, 255), width=8 * scale)
+    draw_green.polygon(green_poly, fill=green_color)
+    
+    # Composite
+    final_img = Image.new("RGBA", (sw, sh), (255, 255, 255, 255))
+    final_img.alpha_composite(shadow_offset)
+    final_img.alpha_composite(red_layer)
+    final_img.alpha_composite(green_layer)
+    
+    # Downsample
+    final_img = final_img.resize((width, height), Image.Resampling.LANCZOS)
+    
+    # Round left corners
+    rad = 20
+    circle = Image.new('L', (rad * 2, rad * 2), 0)
+    draw_circle = ImageDraw.Draw(circle)
+    draw_circle.ellipse((0, 0, rad * 2, rad * 2), fill=255)
+    
+    alpha = Image.new('L', final_img.size, 255)
+    alpha.paste(circle.crop((0, 0, rad, rad)), (0, 0))
+    alpha.paste(circle.crop((0, rad, rad, rad * 2)), (0, height - rad))
+    final_img.putalpha(alpha)
+    
+    return final_img
+
 class AdminLoginPage(ctk.CTkFrame):
     """
     Post-setup login: Uses Admin Name & Password from DB.
@@ -551,54 +705,20 @@ class AdminLoginPage(ctk.CTkFrame):
 
         self.configure(fg_color="#F5F5F5")
 
-        self.main_card = ctk.CTkFrame(self, fg_color="white", corner_radius=20, width=900, height=560)
+        self.main_card = ctk.CTkFrame(self, fg_color="white", corner_radius=20, width=640, height=620)
         self.main_card.place(relx=0.5, rely=0.5, anchor="center")
         self.main_card.pack_propagate(False)
 
-        # ── LEFT: Unified contact info & wavy separator ─────────────────
-        left_canvas = tk.Canvas(self.main_card, width=370, height=560, bg="white", highlightthickness=0)
-        left_canvas.place(x=0, y=0)
+        # Left Graphic Panel using PIL generated image
+        left_panel_w, left_panel_h = 240, 620
+        self.left_img = generate_panel_image(left_panel_w, left_panel_h)
+        self.left_ctk_img = ctk.CTkImage(self.left_img, size=(left_panel_w, left_panel_h))
+        self.left_lbl = ctk.CTkLabel(self.main_card, text="", image=self.left_ctk_img, fg_color="transparent")
+        self.left_lbl.place(x=0, y=0)
 
-        # Draw shadow line
-        shadow_points = []
-        for y in range(0, 565, 5):
-            import math
-            x = 330 + 20 * math.sin(y * 2 * math.pi / 560) + 4
-            shadow_points.extend((x, y))
-        left_canvas.create_line(shadow_points, fill="#F0F0F0", width=4, smooth=True)
-
-        # Draw green background area with S-curve boundary on the right
-        points_green = [(0, 0)]
-        for y in range(0, 285, 5):
-            x = 330 + 20 * math.sin(y * 2 * math.pi / 560)
-            points_green.append((x, y))
-        points_green.append((0, 400))
-        flat_green = []
-        for pt in points_green:
-            flat_green.extend(pt)
-        left_canvas.create_polygon(flat_green, fill="#1B5E20", outline="#1B5E20")
-
-        # Draw red ribbon line
-        points_red = [(0, 400)]
-        for y in range(280, 565, 5):
-            x = 330 + 20 * math.sin(y * 2 * math.pi / 560)
-            points_red.append((x, y))
-        points_red.append((0, 560))
-        flat_red = []
-        for pt in points_red:
-            flat_red.extend(pt)
-        left_canvas.create_polygon(flat_red, fill="#B71C1C", outline="#B71C1C")
-
-        # Draw smooth white border line over boundary
-        line_points = []
-        for y in range(0, 565, 5):
-            x = 330 + 20 * math.sin(y * 2 * math.pi / 560)
-            line_points.extend((x, y))
-        left_canvas.create_line(line_points, fill="white", width=4, smooth=True)
-
-        # --- RIGHT: LOGIN FORM ---
-        self.right_panel = ctk.CTkFrame(self.main_card, fg_color="white", corner_radius=20, width=530, height=560)
-        self.right_panel.place(x=370, y=0)
+        # Right Panel
+        self.right_panel = ctk.CTkFrame(self.main_card, fg_color="white", corner_radius=20, width=400, height=620)
+        self.right_panel.place(x=240, y=0)
         self.right_panel.pack_propagate(False)
 
         # Logo at top
@@ -606,32 +726,28 @@ class AdminLoginPage(ctk.CTkFrame):
             logo_path = resource_path("settings/cherry_signup_logo.png")
             if os.path.exists(logo_path):
                 pil_img = Image.open(logo_path)
-                pil_img = pil_img.resize((200, 58), Image.Resampling.LANCZOS)
-                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(200, 58))
+                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(180, 86))
                 logo_lbl = ctk.CTkLabel(self.right_panel, text="", image=self.cherry_logo_img, fg_color="transparent")
-                logo_lbl.pack(pady=(45, 5))
+                logo_lbl.pack(pady=(45, 15))
         except Exception as e:
             print("Error loading cherry logo in login:", e)
 
-        ctk.CTkLabel(self.right_panel, text="Air Gauge Management",
-                     font=("Segoe UI", 11, "bold"), text_color="#1B5E20").pack(pady=(0, 20))
-
         ctk.CTkLabel(self.right_panel, text="Admin Login",
-                     font=("Segoe UI", 22, "bold"), text_color="#1A1A1A").pack(pady=(0, 2))
+                     font=("Segoe UI", 24, "bold"), text_color="#1A1A1A").pack(pady=(0, 2))
 
         ctk.CTkLabel(self.right_panel, text="Enter your credentials to continue",
-                     font=("Segoe UI", 11), text_color="#757575").pack(pady=(0, 20))
+                     font=("Segoe UI", 11), text_color="#757575").pack(pady=(0, 25))
 
         # Username Field Container
-        user_container = ctk.CTkFrame(self.right_panel, fg_color="white", border_color="#E0E0E0", border_width=1, corner_radius=8, height=48, width=320)
-        user_container.pack(pady=6)
+        user_container = ctk.CTkFrame(self.right_panel, fg_color="white", border_color="#B0050E", border_width=1, corner_radius=8, height=48, width=320)
+        user_container.pack(pady=8)
         user_container.pack_propagate(False)
 
-        user_icon = ctk.CTkLabel(user_container, text="👤", font=("Segoe UI", 16), text_color="#757575", fg_color="transparent")
+        user_icon = ctk.CTkLabel(user_container, text="👤", font=("Segoe UI", 16), text_color="#B0050E", fg_color="transparent")
         user_icon.pack(side="left", padx=(12, 5))
 
         self.user_entry = tk.Entry(user_container, relief="flat", bd=0, bg="white", fg="#333",
-                                   selectbackground="#D32F2F", selectforeground="white",
+                                   selectbackground="#B0050E", selectforeground="white",
                                    font=("Segoe UI", 13), insertbackground="#333")
         self.user_entry.pack(side="left", fill="x", expand=True, padx=(2, 12), pady=12)
         self.user_entry.focus()
@@ -653,15 +769,15 @@ class AdminLoginPage(ctk.CTkFrame):
         self.user_entry.bind("<KeyRelease>", on_user_key)
 
         # Password Field Container
-        pass_container = ctk.CTkFrame(self.right_panel, fg_color="white", border_color="#E0E0E0", border_width=1, corner_radius=8, height=48, width=320)
-        pass_container.pack(pady=6)
+        pass_container = ctk.CTkFrame(self.right_panel, fg_color="white", border_color="#B0050E", border_width=1, corner_radius=8, height=48, width=320)
+        pass_container.pack(pady=8)
         pass_container.pack_propagate(False)
 
-        pass_icon = ctk.CTkLabel(pass_container, text="🔒", font=("Segoe UI", 16), text_color="#757575", fg_color="transparent")
+        pass_icon = ctk.CTkLabel(pass_container, text="🔒", font=("Segoe UI", 16), text_color="#B0050E", fg_color="transparent")
         pass_icon.pack(side="left", padx=(12, 5))
 
         self.pass_entry = tk.Entry(pass_container, relief="flat", bd=0, bg="white", fg="#333",
-                                   selectbackground="#D32F2F", selectforeground="white",
+                                   selectbackground="#B0050E", selectforeground="white",
                                    font=("Segoe UI", 13), insertbackground="#333")
         self.pass_entry.pack(side="left", fill="x", expand=True, padx=(2, 5), pady=12)
 
@@ -700,11 +816,11 @@ class AdminLoginPage(ctk.CTkFrame):
         eye_btn.bind("<Button-1>", lambda e: toggle_pass_visibility())
 
         # Focus ring bindings
-        self.user_entry.bind("<FocusIn>", lambda e: [user_container.configure(border_color="#D32F2F"), user_placeholder.place_forget()])
-        self.user_entry.bind("<FocusOut>", lambda e: [user_container.configure(border_color="#E0E0E0"), check_user_placeholder()])
+        self.user_entry.bind("<FocusIn>", lambda e: [user_container.configure(border_color="#B0050E"), user_placeholder.place_forget()])
+        self.user_entry.bind("<FocusOut>", lambda e: [user_container.configure(border_color="#B0050E"), check_user_placeholder()])
         
-        self.pass_entry.bind("<FocusIn>", lambda e: [pass_container.configure(border_color="#D32F2F"), pass_placeholder.place_forget()])
-        self.pass_entry.bind("<FocusOut>", lambda e: [pass_container.configure(border_color="#E0E0E0"), check_pass_placeholder()])
+        self.pass_entry.bind("<FocusIn>", lambda e: [pass_container.configure(border_color="#B0050E"), pass_placeholder.place_forget()])
+        self.pass_entry.bind("<FocusOut>", lambda e: [pass_container.configure(border_color="#B0050E"), check_pass_placeholder()])
 
         # Return bindings
         self.user_entry.bind("<Return>", lambda event: self.pass_entry.focus())
@@ -717,24 +833,38 @@ class AdminLoginPage(ctk.CTkFrame):
         self.login_btn = ModernButton(self.right_panel, text="UNLOCK SYSTEM",
                                        font=("Segoe UI", 13, "bold"),
                                        height=48, width=320,
-                                       fg_color="#B71C1C", hover_color="#9E0F0F",
+                                       fg_color="#B0050E", hover_color="#90030A",
                                        corner_radius=8,
                                        command=self.check_login)
-        self.login_btn.pack(pady=10)
+        self.login_btn.pack(pady=15)
 
-        # ── Forgot Password link ──────────────────────────────
+        # Forgot Password Container (with green key image and text)
+        forgot_frame = ctk.CTkFrame(self.right_panel, fg_color="transparent")
+        forgot_frame.pack(pady=(5, 10))
+
+        try:
+            key_icon_path = resource_path("settings/forgot_password_key.png")
+            if os.path.exists(key_icon_path):
+                key_pil = Image.open(key_icon_path)
+                self.key_ctk_img = ctk.CTkImage(key_pil, size=(20, 18))
+                key_lbl = ctk.CTkLabel(forgot_frame, text="", image=self.key_ctk_img, fg_color="transparent", cursor="hand2")
+                key_lbl.pack(side="left", padx=(0, 6))
+                key_lbl.bind("<Button-1>", lambda e: self.open_forgot_password())
+        except Exception as e:
+            print("Error loading key icon:", e)
+
         forgot_lbl = ctk.CTkLabel(
-            self.right_panel, 
-            text="🔑  Forgot Password?",
-            font=("Segoe UI", 11, "underline"),
-            text_color="#1B5E20",
+            forgot_frame, 
+            text="Forgot Password?",
+            font=("Segoe UI", 12, "bold"),
+            text_color="#205124",
             cursor="hand2"
         )
-        forgot_lbl.pack(pady=(5, 10))
+        forgot_lbl.pack(side="left")
         forgot_lbl.bind("<Button-1>", lambda e: self.open_forgot_password())
 
         ctk.CTkLabel(self.right_panel, text="Secure Terminal v1.0",
-                     font=("Segoe UI", 11), text_color="#9E9E9E").pack(side="bottom", pady=25)
+                     font=("Segoe UI", 11), text_color="#9E9E9E").place(relx=0.5, rely=0.92, anchor="center")
 
     def _validate_pass_input(self, action, index, value_if_allowed, prior_value, text_inserted_deleted):
         idx = int(index)
@@ -1836,8 +1966,7 @@ class OrganizationSetupPage(ctk.CTkFrame):
             logo_path = resource_path("settings/cherry_signup_logo.png")
             if os.path.exists(logo_path):
                 pil_img = Image.open(logo_path)
-                pil_img = pil_img.resize((220, 64), Image.Resampling.LANCZOS)
-                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(220, 64))
+                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(180, 86))
                 logo_lbl = ctk.CTkLabel(self.left_panel, text="", image=self.cherry_logo_img, fg_color="transparent")
                 logo_lbl.place(relx=0.5, rely=0.15, anchor="center")
         except Exception as e:
@@ -1942,8 +2071,7 @@ class AdminSetupPage(ctk.CTkFrame):
             logo_path = resource_path("settings/cherry_signup_logo.png")
             if os.path.exists(logo_path):
                 pil_img = Image.open(logo_path)
-                pil_img = pil_img.resize((220, 64), Image.Resampling.LANCZOS)
-                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(220, 64))
+                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(180, 86))
                 logo_lbl = ctk.CTkLabel(self.left_panel, text="", image=self.cherry_logo_img, fg_color="transparent")
                 logo_lbl.place(relx=0.5, rely=0.15, anchor="center")
         except Exception as e:
@@ -3248,9 +3376,11 @@ class CherryApp(ctk.CTk):
         # === Modern Sidebar with Glassmorphism ===
         self.sidebar = ctk.CTkFrame(
             self, 
-            fg_color="#1B5E20", # Lighter forest green
+            fg_color="white",
             width=240,
-            corner_radius=15
+            corner_radius=15,
+            border_width=1,
+            border_color="#E0E0E0"
         )
         # Packed by default
         self.sidebar.pack(side="left", fill="y", padx=(15, 0), pady=15, before=self.content_frame)
@@ -3266,18 +3396,18 @@ class CherryApp(ctk.CTk):
 
         # --- Modern Menu Items with Icons ---
         menu_items = [
-            ("🏠  Home", self.load_home, "home"),
-            ("⚙️  Settings", self.verify_settings_password, "settings"),
-            ("📈  Run Chart", self.load_run_chat, "runchat"),
-            ("📡  Live Data", self.load_live_data, "livedata"),
-            ("🔌  USB", self.load_usb_data, "usbdata"),
-            ("📊  Report", self.load_report_page, "report"),
+            ("🏠", "Home", self.load_home, "home"),
+            ("⚙️", "Settings", self.verify_settings_password, "settings"),
+            ("📈", "Run Chart", self.load_run_chat, "runchat"),
+            ("📡", "Live Data", self.load_live_data, "livedata"),
+            ("🔌", "USB", self.load_usb_data, "usbdata"),
+            ("📊", "Report", self.load_report_page, "report"),
         ]
 
         # Store buttons for active state management
         self.sidebar_buttons = {}
         
-        for text, func, key in menu_items:
+        for symbol, word, func, key in menu_items:
              # Create button container for hover effect
              btn_container = ctk.CTkFrame(
                  sidebar_inner,
@@ -3287,17 +3417,10 @@ class CherryApp(ctk.CTk):
              pady_val = (15, 4) if key == "home" else 4
              btn_container.pack(fill="x", padx=12, pady=pady_val)
              
-             btn = ModernButton(
+             btn = SidebarButton(
                  btn_container,
-                 text=text,
-                 font=("Segoe UI", 13, "bold"),
-                 fg_color="transparent",
-                 hover_color="#144A26",
-                 text_color="white",
-                 corner_radius=8,
-                 height=48,
-                 border_width=0,
-                 anchor="w",
+                 symbol=symbol,
+                 word=word,
                  command=lambda f=func, k=key: self._sidebar_nav(f, k)
              )
              btn.pack(fill="x", padx=2, pady=2)
@@ -3316,7 +3439,7 @@ class CherryApp(ctk.CTk):
             footer_frame,
             text="v2.0",
             font=("Segoe UI", 9),
-            text_color="#A5D6A7"
+            text_color="#757575"
         ).pack()
 
         # --- Logout Button at the bottom (above version info) ---
@@ -3326,17 +3449,10 @@ class CherryApp(ctk.CTk):
         )
         logout_container.pack(side="bottom", fill="x", padx=12, pady=10)
         
-        logout_btn = ModernButton(
+        logout_btn = SidebarButton(
             logout_container,
-            text="🚪  Logout",
-            font=("Segoe UI", 13, "bold"),
-            fg_color="transparent",
-            hover_color="#144A26",
-            text_color="white",
-            corner_radius=8,
-            height=48,
-            border_width=0,
-            anchor="w",
+            symbol="🚪",
+            word="Logout",
             command=lambda: self._sidebar_nav(self.load_logout, "logout")
         )
         logout_btn.pack(fill="x", padx=2, pady=2)
@@ -3348,17 +3464,9 @@ class CherryApp(ctk.CTk):
         # Reset all buttons to normal state
         for btn_key, btn in self.sidebar_buttons.items():
             if btn_key == key:
-                # Active state - Lighter green highlight
-                btn.configure(
-                    fg_color="#388E3C",
-                    hover_color="#2E7D32"
-                )
+                btn.set_active(True)
             else:
-                # Inactive state - transparent blending into forest green background
-                btn.configure(
-                    fg_color="transparent",
-                    hover_color="#144A26"
-                )
+                btn.set_active(False)
         func()
 
 
@@ -9656,28 +9764,71 @@ class UsbDataPage(ctk.CTkFrame):
         return []
 
     def build_ui(self):
+        # Helper to dynamically generate a clean white-on-transparent USB trident logo
+        def create_usb_icon():
+            from PIL import Image, ImageDraw
+            img = Image.new("RGBA", (80, 80), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            
+            # White circular outline
+            draw.ellipse([12, 12, 68, 68], outline="white", width=4)
+            
+            # USB Trident Bottom Circle
+            draw.ellipse([34, 50, 46, 62], fill="white")
+            
+            # Central stem
+            draw.line([(40, 50), (40, 24)], fill="white", width=4)
+            # Top arrow
+            draw.polygon([(40, 15), (33, 24), (47, 24)], fill="white")
+            
+            # Left branch (ending in a square)
+            draw.line([(40, 42), (28, 30)], fill="white", width=4)
+            draw.line([(28, 30), (28, 24)], fill="white", width=4)
+            draw.rectangle([23, 19, 33, 29], fill="white")
+            
+            # Right branch (ending in a circle)
+            draw.line([(40, 42), (52, 30)], fill="white", width=4)
+            draw.line([(52, 30), (52, 24)], fill="white", width=4)
+            draw.ellipse([47, 19, 57, 29], fill="white")
+            
+            return ctk.CTkImage(img, size=(28, 28))
+
         # === Modern Header Card ===
         header_card = ctk.CTkFrame(
             self,
+            fg_color="white",
             corner_radius=15,
             border_width=1,
-            border_color="#E3F2FD"
+            border_color="#E0E0E0"
         )
-        header_card.pack(fill="x", padx=20, pady=(15, 10))
+        header_card.pack(fill="x", padx=20, pady=(10, 5))
+        
+        # Green vertical accent bar on the left edge
+        green_bar = ctk.CTkFrame(header_card, fg_color="#007B43", width=6, corner_radius=0)
+        green_bar.place(x=0, y=0, relheight=1)
         
         # Header content
         header_content = ctk.CTkFrame(header_card, fg_color="transparent")
-        header_content.pack(fill="x", padx=20, pady=15)
+        header_content.pack(fill="x", padx=(25, 20), pady=10)
         
         # Title with icon
         title_frame = ctk.CTkFrame(header_content, fg_color="transparent")
         title_frame.pack(side="left")
         
+        # Rounded green square for logo
+        logo_frame = ctk.CTkFrame(title_frame, fg_color="#007B43", width=40, height=40, corner_radius=8)
+        logo_frame.pack(side="left", padx=(0, 12))
+        logo_frame.pack_propagate(False)
+        
+        logo_lbl = ctk.CTkLabel(logo_frame, image=create_usb_icon(), text="", fg_color="transparent")
+        logo_lbl.pack(expand=True)
+        
+        # Text label for title
         ctk.CTkLabel(
             title_frame,
-            text="🔌 USB Data Upload",
-            font=("Segoe UI", 18, "bold"),
-            text_color="#1976D2"
+            text="USB Data Upload",
+            font=("Segoe UI", 20, "bold"),
+            text_color="#007B43"
         ).pack(side="left")
         
         # Buttons Frame (Right)
@@ -9688,8 +9839,8 @@ class UsbDataPage(ctk.CTkFrame):
         self.save_btn = ModernButton(
             btn_frame,
             text="💾 Save to DB",
-            font=("Segoe UI", 13, "bold"),
-            fg_color="#10B981", hover_color="#059669", # Modern Emerald
+            font=("Segoe UI", 12, "bold"),
+            fg_color="#007B43", hover_color="#005C32",
             text_color="white",
             height=36,
             corner_radius=6,
@@ -9701,10 +9852,13 @@ class UsbDataPage(ctk.CTkFrame):
         # Edit Assignments Button
         edit_btn = ModernButton(
             btn_frame,
-            text="✏️ Edit Assignments",
-            font=("Segoe UI", 13, "bold"),
-            fg_color="#8B5CF6", hover_color="#7C3AED", # Modern Violet
-            text_color="white",
+            text="✎ Edit Assignments",
+            font=("Segoe UI", 12, "bold"),
+            fg_color="white",
+            border_color="#007B43",
+            border_width=1,
+            hover_color="#F1F8E9",
+            text_color="#007B43",
             height=36,
             corner_radius=6,
             command=self.edit_usb_assignments
@@ -9714,9 +9868,9 @@ class UsbDataPage(ctk.CTkFrame):
         # Refresh Button
         refresh_btn = ModernButton(
             btn_frame,
-            text="🔄 Refresh",
-            font=("Segoe UI", 13, "bold"),
-            fg_color="#F59E0B", hover_color="#D97706", # Modern Amber
+            text="↻ Refresh",
+            font=("Segoe UI", 12, "bold"),
+            fg_color="#FF9800", hover_color="#E65100",
             text_color="white",
             height=36,
             corner_radius=6,
@@ -9727,9 +9881,9 @@ class UsbDataPage(ctk.CTkFrame):
         # Clear Button
         clear_btn = ModernButton(
             btn_frame,
-            text="🗑️ Clear Data",
-            font=("Segoe UI", 13, "bold"),
-            fg_color="#EF4444", hover_color="#DC2626", # Modern Red
+            text="🗑 Clear Data",
+            font=("Segoe UI", 12, "bold"),
+            fg_color="#D32F2F", hover_color="#C62828",
             text_color="white",
             height=36,
             corner_radius=6,
@@ -9741,8 +9895,8 @@ class UsbDataPage(ctk.CTkFrame):
         upload_btn = ModernButton(
             btn_frame,
             text="📤 Upload USB Files",
-            font=("Segoe UI", 13, "bold"),
-            fg_color="#3B82F6", hover_color="#2563EB", # Modern Blue
+            font=("Segoe UI", 12, "bold"),
+            fg_color="#007B43", hover_color="#005C32",
             text_color="white",
             height=36,
             corner_radius=6,
@@ -9750,14 +9904,42 @@ class UsbDataPage(ctk.CTkFrame):
         )
         upload_btn.pack(side="left", padx=8)
 
+        # Custom header frame
+        self.header_row_frame = ctk.CTkFrame(self, fg_color="white", height=42, corner_radius=0)
+        self.header_row_frame.pack(fill="x", padx=20, pady=(0, 0))
+        self.header_row_frame.pack_propagate(False)
+        
+        # Canvas inside the frame for horizontal scrolling
+        self.header_canvas = tk.Canvas(self.header_row_frame, bg="white", highlightthickness=0, height=42)
+        self.header_canvas.pack(side="left", fill="both", expand=True)
+        
+        # Frame inside the canvas to hold header cells
+        self.header_inner_frame = tk.Frame(self.header_canvas, bg="white")
+        self.header_canvas.create_window(0, 0, window=self.header_inner_frame, anchor="nw")
+        
+        # Right-side spacer to account for the vertical scrollbar width
+        self.header_scrollbar_spacer = ctk.CTkFrame(
+            self.header_row_frame,
+            fg_color="white",
+            corner_radius=0,
+            width=16,
+            height=42
+        )
+        self.header_scrollbar_spacer.pack(side="right", fill="y")
+        
+        # Green border line under headers
+        self.border_line = ctk.CTkFrame(self, fg_color="#007B43", height=2, corner_radius=0)
+        self.border_line.pack(fill="x", padx=20, pady=(0, 5))
+
         # === Modern Table Container ===
         self.table_frame = ctk.CTkFrame(
             self,
             corner_radius=15,
             border_width=1,
-            border_color="#E0E0E0"
+            border_color="#E0E0E0",
+            height=250
         )
-        self.table_frame.pack(fill="both", expand=True, padx=20, pady=(0, 15))
+        self.table_frame.pack(fill="both", expand=True, padx=20, pady=(0, 10))
 
         # === Column Configuration (Identical to LiveDataPage) ===
         cols = [
@@ -9787,11 +9969,73 @@ class UsbDataPage(ctk.CTkFrame):
             try: w.destroy()
             except: pass
 
+        # Emojis and column display names
+        header_info = [
+            ("Date", "📅"),
+            ("Time", "🕐"),
+            ("Reading", "∿"),
+            ("Offset", "⌖"),
+            ("Status", "ℹ️"),
+            ("AirGauge ID", "🏷️"),
+            ("Channel", "📊"),
+            ("Drawing", "📄"),
+            ("User ID", "👤"),
+            ("Component ID", "📦"),
+            ("Item", "📋"),
+            ("Machine ID", "⚙️"),
+            ("Customer", "👥"),
+            ("UTL", "🔗"),
+            ("LTL", "🔗")
+        ]
+
+        # Clear custom header inner frame children
+        for child in self.header_inner_frame.winfo_children():
+            try: child.destroy()
+            except: pass
+
+        self.header_widgets = []
+        
+        # Create custom header cells packed horizontally inside self.header_inner_frame
+        for name, emoji in header_info:
+            cell = ctk.CTkFrame(
+                self.header_inner_frame,
+                fg_color="white",
+                corner_radius=0,
+                height=42,
+                border_width=1,
+                border_color="#E0E0E0"
+            )
+            cell.pack(side="left", fill="y")
+            cell.pack_propagate(False)
+            
+            content_frame = ctk.CTkFrame(cell, fg_color="transparent")
+            content_frame.pack(expand=True)
+            
+            icon_lbl = ctk.CTkLabel(
+                content_frame,
+                text=emoji,
+                font=("Segoe UI", 12, "normal"),
+                text_color="#007B43",
+                anchor="center"
+            )
+            icon_lbl.pack(side="left", padx=(0, 4))
+            
+            lbl = ctk.CTkLabel(
+                content_frame,
+                text=name,
+                font=("Segoe UI", 11, "bold"),
+                text_color="#1A1A1A",
+                anchor="center"
+            )
+            lbl.pack(side="left")
+            self.header_widgets.append(cell)
+
         try:
             self.sheet = tksheet.Sheet(
                 self.table_frame,
                 headers=cols,
                 data=[],
+                show_header=False, # HIDE DEFAULT HEADERS
                 show_x_scrollbar=True,
                 show_y_scrollbar=True,
                 show_row_index=False,
@@ -9819,13 +10063,35 @@ class UsbDataPage(ctk.CTkFrame):
             # Bind resize to the table frame (like LiveDataPage) for reliable width detection
             self.table_frame.bind("<Configure>", self._on_table_resize)
             
+            # Bind scrollbar syncing after sheet is initialized
+            try:
+                orig_xscroll = self.sheet.MT.cget("xscrollcommand")
+                def sync_scroll(first, last):
+                    if orig_xscroll:
+                        try:
+                            # Safely evaluate as a Tcl script to split command name and arguments correctly
+                            self.sheet.tk.eval(f"{orig_xscroll} {first} {last}")
+                        except Exception:
+                            pass
+                    try:
+                        self.header_canvas.xview_moveto(first)
+                    except Exception:
+                        pass
+                self.sheet.MT.configure(xscrollcommand=sync_scroll)
+            except Exception as e:
+                print("Failed to sync scrollbar:", e)
+            
             try:
                 self.sheet.redraw()
             except Exception:
                 pass
 
         except Exception as e:
-            ctk.CTkLabel(self.table_frame, text=f"Error loading table: {e}", text_color="red").pack(pady=20)
+            print("=== USB create_table failed ===")
+            import traceback
+            traceback.print_exc()
+            err_lbl = ctk.CTkLabel(self.table_frame, text=f"Error loading table: {e}", text_color="red")
+            err_lbl.grid(row=0, column=0, pady=20)
 
     # ── Minimum pixel widths per column (Date, Time, Reading, Offset, Status,
     #    AirGauge ID, Channel, Drawing, User ID, Component ID, Item,
@@ -9866,6 +10132,14 @@ class UsbDataPage(ctk.CTkFrame):
 
             self.sheet.set_column_widths(widths)
             self.sheet.redraw()
+
+            # Sync header cells widths
+            for idx, col_w in enumerate(widths):
+                if idx < len(self.header_widgets):
+                    self.header_widgets[idx].configure(width=col_w)
+            
+            # Update canvas scroll region
+            self.header_canvas.configure(scrollregion=(0, 0, sum(widths), 42))
         except Exception:
             pass
 

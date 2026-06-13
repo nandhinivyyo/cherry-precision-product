@@ -391,89 +391,170 @@ class InstallerLoginPage(ctk.CTkFrame):
     """
     Pre-setup login: Hardcoded to 'cherry' / 'cherry@123'.
     Required before accessing FirstTimeSetupPage.
+    Redesigned as a modern centered single-card with shadow and circular corners.
     """
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
-        
-        # Background - Professional Blue Gradient or Solid Color
-        self.configure(fg_color="#E8F0FE") # Soft blue-grey background
 
-        # Main Container - Card Style with Shadow Effect
-        self.main_card = ctk.CTkFrame(self, fg_color="white", corner_radius=20, width=900, height=550)
-        self.main_card.place(relx=0.5, rely=0.5, anchor="center")
-        self.main_card.pack_propagate(False)
+        # ── Background: soft neutral gradient ──────────────────────────────
+        self.configure(fg_color="#F0F2F5")
 
-        # --- LEFT SIDE: BRANDING ---
-        self.left_panel = ctk.CTkFrame(self.main_card, fg_color="#1976D2", corner_radius=20, width=400, height=550)
-        self.left_panel.place(x=0, y=0)
-        self.left_panel.pack_propagate(False)
-        
-        # Load cherry logo image
+        # ── Shadow layer: proper drop shadow offset down-right ────────────
+        # We use a Canvas to draw a true soft blurred shadow behind the card
+        self._shadow_canvas = tk.Canvas(self, bg="#F0F2F5", highlightthickness=0,
+                                        width=420, height=550)
+        self._shadow_canvas.place(relx=0.5, rely=0.5, anchor="center")
+
+        # Draw multiple translucent rounded rectangles offset slightly for depth
+        _shadow_colors = ["#CBCDD4", "#D3D5DC", "#DBDDE4", "#E3E5EB", "#EBECF0"]
+        for i, col in enumerate(_shadow_colors):
+            pad = i * 2
+            off = 5 - i  # offset from center
+            self._shadow_canvas.create_rectangle(
+                10 + pad + off, 12 + pad + off,
+                410 - pad + off, 542 - pad + off,
+                fill=col, outline="", tags="shadow"
+            )
+
+        # ── Main Card ──────────────────────────────────────────────────────
+        self.card = ctk.CTkFrame(
+            self,
+            fg_color="white",
+            corner_radius=28,
+            width=400,
+            height=530
+        )
+        self.card.place(relx=0.5, rely=0.5, anchor="center")
+        self.card.pack_propagate(False)
+        self.card.lift()
+
+        # ── Logo ───────────────────────────────────────────────────────────
         try:
             logo_path = resource_path("settings/cherry_signup_logo.png")
             if os.path.exists(logo_path):
                 pil_img = Image.open(logo_path)
-                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(180, 86))
-                logo_lbl = ctk.CTkLabel(self.left_panel, text="", image=self.cherry_logo_img, fg_color="transparent")
-                logo_lbl.place(relx=0.5, rely=0.18, anchor="center")
+                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(200, 62))
+                logo_lbl = ctk.CTkLabel(self.card, text="", image=self.cherry_logo_img,
+                                        fg_color="transparent")
+                logo_lbl.pack(pady=(38, 6))
         except Exception as e:
-            print("Error loading setup cherry logo:", e)
-        
-        # Branding Text
-        ctk.CTkLabel(self.left_panel, text="Cherry Protocol", 
-                     font=("Segoe UI", 24, "bold"), text_color="white").place(relx=0.5, rely=0.34, anchor="center")
-        
-        ctk.CTkLabel(self.left_panel, text="Precision Air Gauge System", 
-                     font=("Segoe UI", 18, "bold"), text_color="#E3F2FD").place(relx=0.5, rely=0.42, anchor="center")
-        
-        ctk.CTkLabel(self.left_panel, text="Installer Access", 
-                     font=("Segoe UI", 13, "bold"), text_color="#BBDEFB").place(relx=0.5, rely=0.9, anchor="center")
+            print("Error loading installer logo:", e)
 
-        # --- RIGHT SIDE: LOGIN FORM ---
-        self.right_panel = ctk.CTkFrame(self.main_card, fg_color="white", corner_radius=20, width=500, height=550)
-        self.right_panel.place(x=400, y=0)
-        
-        # Container for centering content - providing explicit width/height ensures visibility
-        self.login_form = ctk.CTkFrame(self.right_panel, fg_color="transparent", width=400, height=400)
-        self.login_form.place(relx=0.5, rely=0.5, anchor="center")
+        # ── Title ──────────────────────────────────────────────────────────
+        title_frame = ctk.CTkFrame(self.card, fg_color="transparent")
+        title_frame.pack(pady=(4, 2))
+        ctk.CTkLabel(title_frame, text="Welcome ", font=("Segoe UI", 22, "bold"),
+                     text_color="#1A1A1A").pack(side="left")
+        ctk.CTkLabel(title_frame, text="Back", font=("Segoe UI", 22, "bold"),
+                     text_color="#B0050E").pack(side="left")
 
-        # Title
-        ctk.CTkLabel(self.login_form, text="Welcome Back", 
-                     font=("Segoe UI", 24, "bold"), text_color="#333").pack(pady=(0, 5))
-        
-        ctk.CTkLabel(self.login_form, text="Please sign in to configure the system", 
-                     font=("Segoe UI", 11), text_color="#757575").pack(pady=(0, 30))
+        ctk.CTkLabel(self.card, text="Please sign in to configure the system",
+                     font=("Segoe UI", 11), text_color="#757575").pack(pady=(0, 22))
 
-        # Fields
-        self.user_entry = ctk.CTkEntry(self.login_form, placeholder_text="Username", height=50, width=300, 
-                                       font=("Segoe UI", 13), border_color="#E0E0E0", corner_radius=8)
-        self.user_entry.pack(pady=10)
+        # ── Username Field ─────────────────────────────────────────────────
+        user_container = ctk.CTkFrame(self.card, fg_color="white",
+                                      border_color="#E0E0E0", border_width=1.5,
+                                      corner_radius=12, height=50, width=310)
+        user_container.pack(pady=6)
+        user_container.pack_propagate(False)
+
+        ctk.CTkLabel(user_container, text="👤", font=("Segoe UI", 15),
+                     text_color="#9E9E9E", fg_color="transparent").pack(side="left", padx=(14, 6))
+
+        self.user_entry = tk.Entry(user_container, relief="flat", bd=0,
+                                   bg="white", fg="#333",
+                                   font=("Segoe UI", 13), insertbackground="#333")
+        self.user_entry.pack(side="left", fill="x", expand=True, padx=(0, 14), pady=14)
+
+        user_ph = ctk.CTkLabel(user_container, text="Username", font=("Segoe UI", 13),
+                               text_color="#BDBDBD", fg_color="transparent")
+        user_ph.place(x=42, y=25, anchor="w")
+        user_ph.bind("<Button-1>", lambda e: self.user_entry.focus())
+
+        def _check_user_ph(*_):
+            self.after(10, lambda: user_ph.place_forget() if self.user_entry.get()
+                       else user_ph.place(x=42, y=25, anchor="w"))
+        self.user_entry.bind("<KeyRelease>", _check_user_ph)
+        self.user_entry.bind("<FocusIn>",
+            lambda e: [user_container.configure(border_color="#1A1A1A"), user_ph.place_forget()])
+        self.user_entry.bind("<FocusOut>",
+            lambda e: [user_container.configure(border_color="#E0E0E0"), _check_user_ph()])
         self.user_entry.focus()
 
-        self.pass_entry = ctk.CTkEntry(self.login_form, placeholder_text="Password", show="●", height=50, width=300, 
-                                       font=("Segoe UI", 13), border_color="#E0E0E0", corner_radius=8)
-        self.pass_entry.pack(pady=10)
+        # ── Password Field ─────────────────────────────────────────────────
+        pass_container = ctk.CTkFrame(self.card, fg_color="white",
+                                      border_color="#E0E0E0", border_width=1.5,
+                                      corner_radius=12, height=50, width=310)
+        pass_container.pack(pady=6)
+        pass_container.pack_propagate(False)
 
-        self.user_entry.bind("<Return>", lambda event: self.pass_entry.focus())
-        self.pass_entry.bind("<Return>", lambda event: self.check_login())
+        ctk.CTkLabel(pass_container, text="🔒", font=("Segoe UI", 15),
+                     text_color="#9E9E9E", fg_color="transparent").pack(side="left", padx=(14, 6))
 
-        # Error
-        self.error_label = ctk.CTkLabel(self.login_form, text="", text_color="#D32F2F", font=("Segoe UI", 11))
-        self.error_label.pack(pady=5)
+        self._show_pass = False
+        self._actual_pass = ""
 
-        # Login Button
-        self.login_btn = ModernButton(self.login_form, text="LOGIN", 
-                                      font=("Segoe UI", 13, "bold"),
-                                      height=50, width=300,
-                                      fg_color="#1976D2", hover_color="#1565C0",
-                                      corner_radius=8,
-                                      command=self.check_login)
-        self.login_btn.pack(pady=20)
-        
-        # Footer (keep at bottom of right panel using place to avoid conflict)
-        ctk.CTkLabel(self.right_panel, text="Authorized Personnel Only", 
-                     font=("Segoe UI", 11), text_color="#9E9E9E").place(relx=0.5, rely=0.9, anchor="center")
+        self.pass_entry = tk.Entry(pass_container, relief="flat", bd=0,
+                                   bg="white", fg="#333",
+                                   font=("Segoe UI", 13), insertbackground="#333")
+        self.pass_entry.pack(side="left", fill="x", expand=True, padx=(0, 6), pady=14)
+
+        pass_ph = ctk.CTkLabel(pass_container, text="Password", font=("Segoe UI", 13),
+                               text_color="#BDBDBD", fg_color="transparent")
+        pass_ph.place(x=42, y=25, anchor="w")
+        pass_ph.bind("<Button-1>", lambda e: self.pass_entry.focus())
+
+        def _check_pass_ph(*_):
+            self.after(10, lambda: pass_ph.place_forget() if self.pass_entry.get()
+                       else pass_ph.place(x=42, y=25, anchor="w"))
+
+        def _on_pass_key(event=None):
+            raw = self.pass_entry.get()
+            self._actual_pass = raw
+            _check_pass_ph()
+
+        self.pass_entry.bind("<KeyRelease>", _on_pass_key)
+        self.pass_entry.bind("<FocusIn>",
+            lambda e: [pass_container.configure(border_color="#1A1A1A"), pass_ph.place_forget()])
+        self.pass_entry.bind("<FocusOut>",
+            lambda e: [pass_container.configure(border_color="#E0E0E0"), _check_pass_ph()])
+
+        def _toggle_pass():
+            self._show_pass = not self._show_pass
+            self.pass_entry.config(show="" if self._show_pass else "●")
+            eye_btn.configure(text="👁" if self._show_pass else "👁‍🗨")
+
+        eye_btn = ctk.CTkLabel(pass_container, text="👁‍🗨", font=("Segoe UI", 15),
+                               text_color="#9E9E9E", fg_color="transparent", cursor="hand2")
+        eye_btn.pack(side="right", padx=(0, 12))
+        eye_btn.bind("<Button-1>", lambda e: _toggle_pass())
+
+        # ── Return bindings ────────────────────────────────────────────────
+        self.user_entry.bind("<Return>", lambda e: self.pass_entry.focus())
+        self.pass_entry.bind("<Return>", lambda e: self.check_login())
+
+        # ── Error Label ────────────────────────────────────────────────────
+        self.error_label = ctk.CTkLabel(self.card, text="",
+                                        text_color="#D32F2F", font=("Segoe UI", 11))
+        self.error_label.pack(pady=(8, 2))
+
+        # ── LOGIN Button (black, slightly smaller) ─────────────────────────
+        self.login_btn = ModernButton(
+            self.card,
+            text="⬤  LOGIN",
+            font=("Segoe UI", 12, "bold"),
+            height=42, width=270,
+            fg_color="#1A1A1A", hover_color="#333333",
+            text_color="white",
+            corner_radius=10,
+            command=self.check_login
+        )
+        self.login_btn.pack(pady=(6, 4))
+
+        # ── Footer ─────────────────────────────────────────────────────────
+        ctk.CTkLabel(self.card, text="Authorized Personnel Only",
+                     font=("Segoe UI", 10), text_color="#BDBDBD").pack(pady=(10, 0))
 
     def check_login(self):
         u = self.user_entry.get().strip()
@@ -486,81 +567,151 @@ class InstallerLoginPage(ctk.CTkFrame):
             self.error_label.configure(text="Invalid credentials")
 
 
+
+
 class LicenseVerificationPage(ctk.CTkFrame):
     """
-    Step 2 of Installer setup: License File upload only.
+    Step 2 of Installer setup: License File upload.
+    Redesigned to match the same single-card centered style as InstallerLoginPage.
     """
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
-        
-        # Background
-        self.configure(fg_color="#E8F0FE") 
 
-        # Main Container
-        self.main_card = ctk.CTkFrame(self, fg_color="white", corner_radius=20, width=900, height=550)
-        self.main_card.place(relx=0.5, rely=0.5, anchor="center")
-        self.main_card.pack_propagate(False)
+        # ── Background ────────────────────────────────────────────────────
+        self.configure(fg_color="#F0F2F5")
 
-        # --- LEFT SIDE: BRANDING ---
-        self.left_panel = ctk.CTkFrame(self.main_card, fg_color="#1976D2", corner_radius=20, width=400, height=550)
-        self.left_panel.place(x=0, y=0)
-        self.left_panel.pack_propagate(False)
-        
-        # Load cherry logo image
+        # ── Shadow canvas (same technique as InstallerLoginPage) ──────────
+        self._shadow_canvas = tk.Canvas(self, bg="#F0F2F5", highlightthickness=0,
+                                        width=480, height=570)
+        self._shadow_canvas.place(relx=0.5, rely=0.5, anchor="center")
+        _shadow_colors = ["#CBCDD4", "#D3D5DC", "#DBDDE4", "#E3E5EB", "#EBECF0"]
+        for i, col in enumerate(_shadow_colors):
+            pad = i * 2
+            off = 5 - i
+            self._shadow_canvas.create_rectangle(
+                10 + pad + off, 12 + pad + off,
+                470 - pad + off, 562 - pad + off,
+                fill=col, outline="", tags="shadow"
+            )
+
+        # ── Main Card ─────────────────────────────────────────────────────
+        self.card = ctk.CTkFrame(
+            self,
+            fg_color="white",
+            corner_radius=28,
+            width=460,
+            height=550
+        )
+        self.card.place(relx=0.5, rely=0.5, anchor="center")
+        self.card.pack_propagate(False)
+        self.card.lift()
+
+        # ── Logo ──────────────────────────────────────────────────────────
         try:
             logo_path = resource_path("settings/cherry_signup_logo.png")
             if os.path.exists(logo_path):
                 pil_img = Image.open(logo_path)
-                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(180, 86))
-                logo_lbl = ctk.CTkLabel(self.left_panel, text="", image=self.cherry_logo_img, fg_color="transparent")
-                logo_lbl.place(relx=0.5, rely=0.18, anchor="center")
+                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(200, 62))
+                logo_lbl = ctk.CTkLabel(self.card, text="", image=self.cherry_logo_img,
+                                        fg_color="transparent")
+                logo_lbl.pack(pady=(32, 6))
         except Exception as e:
-            print("Error loading setup cherry logo:", e)
-        
-        ctk.CTkLabel(self.left_panel, text="Step 2", 
-                     font=("Segoe UI", 24, "bold"), text_color="white").place(relx=0.5, rely=0.34, anchor="center")
-        
-        ctk.CTkLabel(self.left_panel, text="License Verification", 
-                     font=("Segoe UI", 18, "bold"), text_color="#E3F2FD").place(relx=0.5, rely=0.42, anchor="center")
-        
-        info_text = ("Almost there!\n\nPlease upload the system\n"
-                     "license file provided by\n"
-                     "the manufacturer to proceed.")
-        
-        ctk.CTkLabel(self.left_panel, text=info_text, 
-                     font=("Segoe UI", 13), text_color="#BBDEFB", justify="center").place(relx=0.5, rely=0.62, anchor="center")
+            print("Error loading license page logo:", e)
 
-        # --- RIGHT SIDE: VERIFICATION ---
-        self.right_panel = ctk.CTkFrame(self.main_card, fg_color="white", corner_radius=20, width=500, height=550)
-        self.right_panel.place(x=400, y=0)
-        
-        self.form_container = ctk.CTkFrame(self.right_panel, fg_color="transparent", width=400, height=400)
-        self.form_container.place(relx=0.5, rely=0.5, anchor="center")
+        # ── Title ─────────────────────────────────────────────────────────
+        ctk.CTkLabel(self.card, text="🔐  License Verification",
+                     font=("Segoe UI", 20, "bold"), text_color="#1A1A1A").pack(pady=(4, 2))
 
-        # Title
-        ctk.CTkLabel(self.form_container, text="Verify System License", 
-                     font=("Segoe UI", 24, "bold"), text_color="#333").pack(pady=(0, 10))
-        
-        ctk.CTkLabel(self.form_container, text="Select your license key file (.key)", 
-                     font=("Segoe UI", 11), text_color="#757575").pack(pady=(0, 40))
+        ctk.CTkLabel(self.card, text="Select your license key file (.key)",
+                     font=("Segoe UI", 11), text_color="#757575").pack(pady=(0, 16))
 
-        # License Upload Button
-        self.license_btn = ModernButton(self.form_container, text="CLICK TO UPLOAD LICENSE", 
-                                       font=("Segoe UI", 13, "bold"),
-                                       height=60, width=320,
-                                       fg_color="#1976D2", hover_color="#1565C0",
-                                       corner_radius=12,
-                                       command=self.upload_license)
-        self.license_btn.pack(pady=20)
-        
-        # Error Label
-        self.error_label = ctk.CTkLabel(self.form_container, text="", text_color="#D32F2F", font=("Segoe UI", 11))
-        self.error_label.pack(pady=20)
+        # ── Drop-zone: Canvas with dashed border + PIL upload-tray icon ──────
+        dz_w, dz_h = 380, 210
+        self._dz_canvas = tk.Canvas(
+            self.card, bg="#F8FAFB",
+            highlightthickness=0, width=dz_w, height=dz_h
+        )
+        self._dz_canvas.pack(pady=(0, 14))
 
-        # Footer
-        ctk.CTkLabel(self.right_panel, text="License Required for System Activation", 
-                     font=("Segoe UI", 11), text_color="#9E9E9E").place(relx=0.5, rely=0.9, anchor="center")
+        # Dashed border rectangle
+        self._dz_canvas.create_rectangle(
+            6, 6, dz_w - 6, dz_h - 6,
+            outline="#AAAAAA", width=2, dash=(5, 4)
+        )
+
+        # Upload-tray icon via PIL → PhotoImage on canvas
+        try:
+            from PIL import ImageTk as _ITK
+            _icon_pil = LicenseVerificationPage._make_cloud_icon(
+                size=64, color="#1A1A1A", bg="#F8FAFB")
+            self._cloud_photo = _ITK.PhotoImage(_icon_pil)
+            self._dz_canvas.create_image(dz_w // 2, 52, image=self._cloud_photo)
+        except Exception as _ce:
+            self._dz_canvas.create_text(dz_w // 2, 46, text="⬆",
+                                         font=("Segoe UI", 36), fill="#555")
+
+        # "Drag & drop" label
+        self._dz_canvas.create_text(
+            dz_w // 2, 106,
+            text="Drag & drop your license file here",
+            font=("Segoe UI", 13, "bold"), fill="#1A1A1A"
+        )
+
+        # "or" divider
+        self._dz_canvas.create_text(
+            dz_w // 2, 128,
+            text="or", font=("Segoe UI", 10), fill="#AAAAAA"
+        )
+
+        # Upload button embedded in canvas
+        self.license_btn = ModernButton(
+            self._dz_canvas,
+            text="⬆  CLICK TO UPLOAD LICENSE",
+            font=("Segoe UI", 11, "bold"),
+            height=38, width=300,
+            fg_color="#1A1A1A", hover_color="#333333",
+            text_color="white",
+            corner_radius=8,
+            command=self.upload_license
+        )
+        self._dz_canvas.create_window(dz_w // 2, 170, window=self.license_btn)
+
+
+        # ── Info hint ─────────────────────────────────────────────────────
+        hint_frame = ctk.CTkFrame(self.card, fg_color="#F0F4F0",
+                                  corner_radius=10, width=380, height=56)
+        hint_frame.pack(pady=(0, 12))
+        hint_frame.pack_propagate(False)
+
+        ctk.CTkLabel(hint_frame,
+                     text="ℹ  License file should be in .key format\n"
+                          "    Contact your system administrator if you don't have one.",
+                     font=("Segoe UI", 10), text_color="#4E6B50",
+                     fg_color="transparent", justify="left").pack(
+                         anchor="w", padx=12, pady=8)
+
+        # ── Error Label ───────────────────────────────────────────────────
+        self.error_label = ctk.CTkLabel(self.card, text="",
+                                        text_color="#D32F2F", font=("Segoe UI", 11))
+        self.error_label.pack(pady=(0, 6))
+
+        # ── VERIFY & PROCEED Button (black) ───────────────────────────────
+        self.proceed_btn = ModernButton(
+            self.card,
+            text="🔒  VERIFY & PROCEED",
+            font=("Segoe UI", 12, "bold"),
+            height=42, width=280,
+            fg_color="#1A1A1A", hover_color="#333333",
+            text_color="white",
+            corner_radius=10,
+            command=self.upload_license
+        )
+        self.proceed_btn.pack(pady=(0, 6))
+
+        # ── Footer ────────────────────────────────────────────────────────
+        ctk.CTkLabel(self.card, text="🔒  License Required for System Activation",
+                     font=("Segoe UI", 10), text_color="#BDBDBD").pack(pady=(2, 0))
 
     def upload_license(self):
         filename = filedialog.askopenfilename(
@@ -584,16 +735,60 @@ class LicenseVerificationPage(ctk.CTkFrame):
                 ]
                 
                 if content in valid_keys:
-                    # Visual feedback
-                    self.license_btn.configure(text="License Verified ✅", fg_color="#4CAF50", text_color="white")
+                    self.license_btn.configure(text="License Verified ✅",
+                                               fg_color="#2E7D32", text_color="white")
+                    self.proceed_btn.configure(text="✅  Verified — Proceeding...",
+                                               fg_color="#2E7D32")
                     self.error_label.configure(text="")
                     self.update()
                     time.sleep(0.5)
                     self.controller.show_setup_wizard()
                 else:
-                    self.error_label.configure(text="Invalid License File")
+                    self.error_label.configure(text="❌  Invalid License File. Please try again.")
             except Exception as e:
                 self.error_label.configure(text=f"Error reading file: {str(e)}")
+
+    @staticmethod
+    def _make_cloud_icon(size=64, color="#1A1A1A", bg="#F8FAFB"):
+        """Draw an upload-tray icon (arrow + tray base) matching the reference UI."""
+        from PIL import Image, ImageDraw
+        ic = tuple(int(color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)) + (255,)
+        img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        lw = max(2, round(size / 20))
+        s   = float(size)
+        cx  = size // 2
+
+        # ─ Upward arrow ─
+        tip_y      = int(0.05 * s)   # very top of arrowhead
+        head_half  = int(0.18 * s)   # half-width of arrowhead base
+        shaft_top  = tip_y + head_half
+        shaft_btm  = int(0.55 * s)   # where shaft meets the tray
+
+        # Filled arrowhead triangle
+        draw.polygon([
+            (cx,            tip_y),
+            (cx - head_half, shaft_top),
+            (cx + head_half, shaft_top),
+        ], fill=ic)
+
+        # Arrow shaft
+        draw.line([cx, shaft_top, cx, shaft_btm], fill=ic, width=lw)
+
+        # ─ Tray base ─
+        tray_arm_w = int(0.38 * s)   # how far arms spread sideways from center
+        tray_top_y = int(0.55 * s)   # top of tray (= shaft bottom)
+        tray_btm_y = int(0.82 * s)   # bottom bar y
+
+        # Left arm: diagonal from shaft-bottom going down-left
+        draw.line([cx, tray_top_y, cx - tray_arm_w, tray_btm_y], fill=ic, width=lw)
+        # Right arm: diagonal from shaft-bottom going down-right
+        draw.line([cx, tray_top_y, cx + tray_arm_w, tray_btm_y], fill=ic, width=lw)
+        # Horizontal base bar
+        draw.line([cx - tray_arm_w, tray_btm_y, cx + tray_arm_w, tray_btm_y],
+                  fill=ic, width=lw)
+
+        return img
 
 
 def bezier_curve(p0, p1, p2, p3, num_points=100):
@@ -804,7 +999,7 @@ class AdminLoginPage(ctk.CTkFrame):
             border_width=1,
             border_color="#E0E0E0",
             width=420,
-            height=530
+            height=610
         )
         self.login_card.place(relx=0.75, rely=0.5, anchor="center")
         self.login_card.pack_propagate(False)
@@ -954,13 +1149,43 @@ class AdminLoginPage(ctk.CTkFrame):
                                        command=self.check_login)
         self.login_btn.pack(pady=10)
 
-        # ── 9. Secure Terminal v1.0 label ──
+        # ── 9. OR Separator ──
+        or_frame = ctk.CTkFrame(self.login_card, fg_color="transparent", width=320, height=20)
+        or_frame.pack(pady=(0, 4))
+        or_frame.pack_propagate(False)
+
+        or_left = ctk.CTkFrame(or_frame, fg_color="#E0E0E0", height=1)
+        or_left.place(relx=0.0, rely=0.5, relwidth=0.38, anchor="w")
+
+        ctk.CTkLabel(or_frame, text="OR", font=("Segoe UI", 10, "bold"),
+                     text_color="#9E9E9E", fg_color="transparent").place(relx=0.5, rely=0.5, anchor="center")
+
+        or_right = ctk.CTkFrame(or_frame, fg_color="#E0E0E0", height=1)
+        or_right.place(relx=1.0, rely=0.5, relwidth=0.38, anchor="e")
+
+        # ── 10. Create Account Button ──
+        self.create_btn = ModernButton(
+            self.login_card,
+            text="👤  CREATE ACCOUNT",
+            font=("Segoe UI", 13, "bold"),
+            height=48, width=320,
+            fg_color="white",
+            hover_color="#F1F8E9",
+            text_color="#205124",
+            border_color="#205124",
+            border_width=1.5,
+            corner_radius=8,
+            command=self.start_registration
+        )
+        self.create_btn.pack(pady=(0, 10))
+
+        # ── 11. Secure Terminal v1.0 label ──
         ctk.CTkLabel(
             self.login_card,
             text="Secure Terminal v1.0",
             font=("Segoe UI", 11),
             text_color="#9E9E9E"
-        ).place(relx=0.5, rely=0.93, anchor="center")
+        ).place(relx=0.5, rely=0.95, anchor="center")
 
     def _on_resize(self, event=None):
         if self._resize_job:
@@ -1042,6 +1267,11 @@ class AdminLoginPage(ctk.CTkFrame):
 
     def open_forgot_password(self):
         ForgotPasswordDialog(self, self.controller)
+
+    def start_registration(self):
+        """Transition from login page to the setup/registration wizard."""
+        self.controller.start_setup_from_login()
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -2616,6 +2846,14 @@ class CherryApp(ctk.CTk):
         """Show the Admin Login Page (DB-based)."""
         self.admin_login = AdminLoginPage(self, self)
         self.admin_login.pack(fill="both", expand=True)
+
+    def start_setup_from_login(self):
+        """Called when user clicks CREATE ACCOUNT on the login page.
+        Destroys the login page and starts the installer/setup wizard flow."""
+        if hasattr(self, "admin_login"):
+            self.admin_login.pack_forget()
+            self.admin_login.destroy()
+        self.show_installer_login()
 
     def complete_login(self):
         """Called by AdminLoginPage on success."""

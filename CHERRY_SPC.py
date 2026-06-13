@@ -2908,21 +2908,11 @@ class CherryApp(ctk.CTk):
         )
         pwd_entry.pack(pady=(10, 2))
 
-        # Shift text inside entry to make room for key icon (left) and eye button (right)
+        # Shift text inside entry to make room for eye button (right)
         try:
-            pwd_entry._entry.configure(padx=35)
+            pwd_entry._entry.configure(padx=8)
         except Exception:
             pass
-
-        try:
-            key_img_path = resource_path("settings/forgot_password_key.png")
-            key_pil = Image.open(key_img_path)
-            key_pil = key_pil.resize((16, 16), Image.Resampling.LANCZOS)
-            key_img = ctk.CTkImage(key_pil, size=(16, 16))
-            key_icon_lbl = ctk.CTkLabel(pwd_entry, text="", image=key_img, fg_color="transparent")
-        except Exception:
-            key_icon_lbl = ctk.CTkLabel(pwd_entry, text="🔑", font=("Segoe UI", 12), fg_color="transparent")
-        key_icon_lbl.place(x=10, rely=0.5, anchor="w")
 
         # Toggle password visibility helper
         self._show_pwd_setup = False
@@ -3068,21 +3058,11 @@ class CherryApp(ctk.CTk):
         )
         pwd_entry.pack(pady=(10, 2))
 
-        # Shift text inside entry to make room for key icon (left) and eye button (right)
+        # Shift text inside entry to make room for eye button (right)
         try:
-            pwd_entry._entry.configure(padx=35)
+            pwd_entry._entry.configure(padx=8)
         except Exception:
             pass
-
-        try:
-            key_img_path = resource_path("settings/forgot_password_key.png")
-            key_pil = Image.open(key_img_path)
-            key_pil = key_pil.resize((16, 16), Image.Resampling.LANCZOS)
-            key_img = ctk.CTkImage(key_pil, size=(16, 16))
-            key_icon_lbl = ctk.CTkLabel(pwd_entry, text="", image=key_img, fg_color="transparent")
-        except Exception:
-            key_icon_lbl = ctk.CTkLabel(pwd_entry, text="🔑", font=("Segoe UI", 12), fg_color="transparent")
-        key_icon_lbl.place(x=10, rely=0.5, anchor="w")
 
         # Toggle password visibility helper
         self._show_pwd_settings = False

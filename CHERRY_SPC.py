@@ -14361,15 +14361,26 @@ class ReportPage(ctk.CTkFrame):
         combo._base_values = list(options_list)
 
         def on_keyrelease(e):
-            typed = combo.get().strip().lower()
-            if typed:
-                filtered = [v for v in combo._base_values if typed in v.lower()]
+            # Ignore navigation keys to not interfere with dropdown interaction
+            if e.keysym in ('Up', 'Down', 'Return', 'Escape', 'Tab'):
+                return
+            
+            typed = combo.get()
+            typed_lower = typed.strip().lower()
+            if typed_lower:
+                filtered = [v for v in combo._base_values if typed_lower in v.lower()]
             else:
                 filtered = combo._base_values
             if "All" not in filtered:
                 filtered = ["All"] + filtered
             try:
                 combo.configure(values=filtered)
+                # Restore the typed text because configure(values=...) resets it
+                combo.set(typed)
+                
+                # Keep cursor at the end
+                if hasattr(combo, "_entry") and combo._entry:
+                    combo._entry.icursor("end")
             except Exception:
                 pass
 
@@ -14377,6 +14388,8 @@ class ReportPage(ctk.CTkFrame):
             val = combo.get().strip() or "All"
             tk_var.set(val)
             self._schedule_filter()
+
+        combo.configure(command=lambda v: on_select())
 
         if hasattr(combo, "_entry") and combo._entry:
             combo._entry.bind("<KeyRelease>", on_keyrelease)
@@ -14881,296 +14894,164 @@ class ReportPage(ctk.CTkFrame):
         sub_lbl.pack()
 
     def _build_table_area(self):
-        # Table Container Card
-        table_frame = ctk.CTkFrame(
-            self,
-            fg_color="#ffffff",
-            corner_radius=12,
-            border_width=1,
-            border_color="#e5e7eb"
-        )
-        table_frame.pack(fill="both", expand=True, padx=24, pady=(6, 20))
-        table_frame.grid_rowconfigure(3, weight=1) # Row 3 is sheet_holder
-        table_frame.grid_columnconfigure(0, weight=1)
+        # Container
+        self.table_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.table_frame.pack(fill="both", expand=True, padx=24, pady=(6, 20))
 
-        cols = (
-            "S.No", "Time", "Date", "Reading", "Offset", "Status",
-            "AirGauge ID", "Channel", "Drawing", "User", "CompID",
-            "Item", "CNC ID", "Customer"
-        )
-
-        self.report_columns = cols
-        header_info = [
-            ("S.No", "#"),
-            ("Time", "\u25F4"),
-            ("Date", "\U0001F4C5"),
-            ("Reading", "~"),
-            ("Offset", "\u2192"),
-            ("Status", "i"),
-            ("AirGauge ID", "\u25C7"),
-            ("Channel", "\u2261"),
-            ("Drawing", "\U0001F4C4"),
-            ("User", "\U0001F464"),
-            ("CompID", "\U0001F4E6"),
-            ("Item", "\u25A4"),
-            ("CNC ID", "\u2699"),
-            ("Customer", "\U0001F465"),
-        ]
-
-        # Results Section title (small uppercase text)
         self.results_title_lbl = ctk.CTkLabel(
-            table_frame,
+            self.table_frame,
             text="RESULTS SHOWCASE",
             font=("Segoe UI", 10, "bold"),
             text_color="#9ca3af"
         )
-        self.results_title_lbl.grid(row=0, column=0, sticky="w", padx=20, pady=(15, 8))
+        self.results_title_lbl.pack(anchor="w", padx=20, pady=(0, 8))
 
-        self.report_header_frame = ctk.CTkFrame(table_frame, fg_color="white", height=42, corner_radius=0)
-        self.report_header_frame.grid(row=1, column=0, sticky="ew", padx=0, pady=(0, 0))
-        self.report_header_frame.grid_propagate(False)
+        self.results_scrollable = ctk.CTkScrollableFrame(
+            self.table_frame,
+            fg_color="transparent"
+        )
+        self.results_scrollable.pack(fill="both", expand=True)
 
-        self.report_header_canvas = tk.Canvas(self.report_header_frame, bg="white", highlightthickness=0, height=42)
-        self.report_header_canvas.pack(side="left", fill="both", expand=True)
-        self.report_header_inner = tk.Frame(self.report_header_canvas, bg="white")
-        self.report_header_canvas.create_window(0, 0, window=self.report_header_inner, anchor="nw")
-
-        ctk.CTkFrame(
-            self.report_header_frame,
-            fg_color="white",
-            corner_radius=0,
-            width=16,
-            height=42
-        ).pack(side="right", fill="y")
-
-        self.report_header_widgets = []
-        for i, (name, _) in enumerate(header_info):
-            cell = tk.Frame(
-                self.report_header_inner,
-                bg="white",
-                height=42
-            )
-            cell.pack(side="left", fill="y")
-            cell.pack_propagate(False)
-
-            tk.Label(
-                cell,
-                text=name,
-                font=("Segoe UI", 10, "bold"),
-                fg="#374151",
-                bg="white",
-                anchor="center",
-                justify="center"
-            ).place(relx=0.5, rely=0.5, anchor="center")
-
-            if i < len(header_info) - 1:
-                sep = tk.Frame(cell, bg="#eef2ff", width=1)
-                sep.pack(side="right", fill="y")
-
-            self.report_header_widgets.append(cell)
-
-        ctk.CTkFrame(table_frame, fg_color="#e5e7eb", height=1, corner_radius=0).grid(row=2, column=0, sticky="ew")
-
-        sheet_holder = ctk.CTkFrame(table_frame, fg_color="white", corner_radius=0)
-        sheet_holder.grid(row=3, column=0, sticky="nsew", padx=0, pady=0)
-        sheet_holder.grid_rowconfigure(0, weight=1)
-        sheet_holder.grid_columnconfigure(0, weight=1)
-
-        self._report_col_min_widths = [56, 70, 76, 86, 70, 70, 102, 78, 82, 70, 82, 78, 82, 92]
-        self._report_col_weights = [6, 7, 8, 9, 7, 7, 11, 8, 8, 7, 8, 8, 8, 10]
-
-        def apply_report_widths(event=None):
-            try:
-                total_w = sheet_holder.winfo_width()
-                if total_w < 200:
-                    total_w = table_frame.winfo_width()
-                if total_w < 200:
-                    return
-
-                scrollbar_pad = 18
-                usable = max(100, total_w - scrollbar_pad)
-                total_min = sum(self._report_col_min_widths)
-                total_weight = sum(self._report_col_weights)
-                extra = max(0, usable - total_min)
-                widths = [
-                    self._report_col_min_widths[i] + int(extra * self._report_col_weights[i] / total_weight)
-                    for i in range(len(cols))
-                ]
-                widths[-1] += usable - sum(widths)
-
-                if self.use_tksheet and self.sheet:
-                    for idx, width in enumerate(widths):
-                        try:
-                            self.sheet.column_width(column=idx, width=width, only_set_if_too_small=False)
-                        except TypeError:
-                            self.sheet.column_width(idx, width)
-                    try:
-                        self.sheet.refresh()
-                    except Exception:
-                        pass
-                elif self.tree:
-                    for idx, width in enumerate(widths):
-                        self.tree.column(cols[idx], width=width, anchor="center")
-
-                for idx, width in enumerate(widths):
-                    if idx < len(self.report_header_widgets):
-                        cell = self.report_header_widgets[idx]
-                        cell.config(width=width)
-                        for child in cell.place_slaves():
-                            try:
-                                child.config(wraplength=max(20, width - 6))
-                            except Exception:
-                                pass
-                self.report_header_inner.update_idletasks()
-                self.report_header_canvas.configure(scrollregion=self.report_header_canvas.bbox("all"))
-            except Exception as e:
-                print("Report table resize error:", e)
-
-        self._apply_report_widths = apply_report_widths
-
-        if self.use_tksheet:
-            self.sheet = Sheet(
-                sheet_holder,
-                headers=list(cols),
-                show_header=False,
-                show_row_index=False,
-                show_x_scrollbar=True,
-                show_y_scrollbar=True,
-                height=500,
-                row_height=45
-            )
-            self.sheet.grid(row=0, column=0, sticky="nsew")
-            try:
-                self.sheet.set_options(auto_resize_columns=False)
-                self.sheet.set_options(column_width_resize=False)
-                self.sheet.set_options(
-                    header_bg="#f9fafb",
-                    header_background="#f9fafb",
-                    header_fg="#374151",
-                    header_foreground="#374151",
-                    header_font=("Segoe UI", 11, "bold"),
-                    font=("Segoe UI", 10, "normal"),
-                    table_bg="#ffffff",
-                    table_background="#ffffff",
-                    table_grid_color="#f3f4f6",
-                    header_grid_color="#e5e7eb",
-                    table_bg_even="#ffffff",
-                    table_bg_odd="#f9fafb",
-                    table_selected_rows_bg="#ede9fe",
-                    table_selected_rows_fg="#5b21b6"
-                )
-            except Exception as e:
-                print("tksheet configuration error:", e)
-            try:
-                self.sheet.enable_bindings(("single_select", "row_select", "arrowkeys", "copy", "select_all", "right_click_popup_menu"))
-            except Exception:
-                pass
-            try:
-                orig_xscroll = self.sheet.MT.cget("xscrollcommand")
-                def sync_scroll(first, last):
-                    if orig_xscroll:
-                        try:
-                            self.sheet.tk.eval(f"{orig_xscroll} {first} {last}")
-                        except Exception:
-                            pass
-                    try:
-                        self.report_header_canvas.xview_moveto(first)
-                    except Exception:
-                        pass
-                self.sheet.MT.configure(xscrollcommand=sync_scroll)
-            except Exception as e:
-                print("Failed to sync Report header scrollbar:", e)
-        else:
-            style = ttk.Style()
-            style.configure("Report.Treeview",
-                            background="#ffffff",
-                            foreground="#374151",
-                            fieldbackground="#ffffff",
-                            rowheight=45,
-                            font=("Segoe UI", 10))
-            style.configure("Report.Treeview.Heading",
-                            background="#f9fafb",
-                            foreground="#374151",
-                            font=("Segoe UI", 11, "bold"))
-            style.map("Report.Treeview.Heading", background=[('active', '#f9fafb')])
-
-            self.tree = ttk.Treeview(sheet_holder, columns=cols, show="headings", selectmode="browse", style="Report.Treeview")
-            for h in cols:
-                self.tree.heading(h, text="")
-                self.tree.column(h, width=90, anchor="center")
-            
-            # Treeview status tags colors
-            self.tree.tag_configure("pass_row", background="#dcfce7", foreground="#16a34a")
-            self.tree.tag_configure("fail_row", background="#fee2e2", foreground="#dc2626")
-
-            vsb = ttk.Scrollbar(sheet_holder, orient="vertical", command=self.tree.yview)
-            hsb = ttk.Scrollbar(sheet_holder, orient="horizontal", command=self.tree.xview)
-            self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
-            self.tree.grid(row=0, column=0, sticky="nsew")
-            vsb.grid(row=0, column=1, sticky="ns")
-            hsb.grid(row=1, column=0, sticky="ew")
-            self.tree.bind("<Double-1>", lambda e: None)
-
-        sheet_holder.bind("<Configure>", self._apply_report_widths)
-        self.after(100, self._apply_report_widths)
-
-        self.empty_state_frame = ctk.CTkFrame(sheet_holder, fg_color="white", corner_radius=12)
+        self.empty_state_frame = ctk.CTkFrame(self.table_frame, fg_color="#F8FAFF", corner_radius=12)
         center_content = ctk.CTkFrame(self.empty_state_frame, fg_color="transparent")
         center_content.place(relx=0.5, rely=0.5, anchor="center")
         
-        icon_lbl = ctk.CTkLabel(
-            center_content,
-            text="📥",
-            font=("Segoe UI", 48),
-            text_color="#94a3b8"
-        )
+        icon_lbl = ctk.CTkLabel(center_content, text="📥", font=("Segoe UI", 48), text_color="#94a3b8")
         icon_lbl.pack(pady=(0, 10))
-
-        msg_lbl = ctk.CTkLabel(
-            center_content,
-            text="No Data Available",
-            font=("Segoe UI", 15, "bold"),
-            text_color="#111827"
-        )
+        msg_lbl = ctk.CTkLabel(center_content, text="No Data Available", font=("Segoe UI", 15, "bold"), text_color="#111827")
         msg_lbl.pack(pady=(0, 4))
-
-        sub_lbl = ctk.CTkLabel(
-            center_content,
-            text="Please select filters and click Analyze Data to view records.",
-            font=("Segoe UI", 11),
-            text_color="#6b7280"
-        )
+        sub_lbl = ctk.CTkLabel(center_content, text="Please select filters and click Analyze Data to view records.", font=("Segoe UI", 11), text_color="#6b7280")
         sub_lbl.pack()
 
     def _style_table_status_cells(self):
-        if not self.use_tksheet or not self.sheet:
+        pass
+
+    def _populate_cards(self, table_rows):
+        # Clear existing cards
+        for widget in self.results_scrollable.winfo_children():
+            widget.destroy()
+
+        if not table_rows:
             return
-        try:
-            self.sheet.dehighlight_cells(column=5)
-        except Exception:
-            pass
+
+        self._card_widgets = []
+        self._selected_card_index = None
+
+        def select_card(idx, card_widget):
+            self._selected_card_index = idx
+            for i, cw in enumerate(self._card_widgets):
+                if i == idx:
+                    cw.configure(border_color="#4F46E5", border_width=2)
+                else:
+                    cw.configure(border_color="#CBD5F0", border_width=1)
+
+        # Render up to 150 rows
+        for idx, row in enumerate(table_rows[:150]):
+            try:
+                # Fallback extraction if lengths differ
+                s_no = str(row[0]) if len(row)>0 else "-"
+                time_val = str(row[1]) if len(row)>1 else "-"
+                date_val = str(row[2]) if len(row)>2 else "-"
+                reading = str(row[3]) if len(row)>3 else "-"
+                offset = str(row[4]) if len(row)>4 else "-"
+                status = str(row[5]).upper() if len(row)>5 else "-"
+                air_id = str(row[6]) if len(row)>6 else "-"
+                channel = str(row[7]) if len(row)>7 else "-"
+                drawing = str(row[8]) if len(row)>8 else "-"
+                user = str(row[9]) if len(row)>9 else "-"
+                comp_id = str(row[10]) if len(row)>10 else "-"
+                item = str(row[11]) if len(row)>11 else "-"
+                cnc_id = str(row[12]) if len(row)>12 else "-"
+                customer = str(row[13]) if len(row)>13 else "-"
+            except IndexError:
+                continue
+
+            card = ctk.CTkFrame(
+                self.results_scrollable,
+                fg_color="#F8FAFF",
+                corner_radius=16,
+                border_width=1,
+                border_color="#CBD5F0"
+            )
+            card.pack(fill="x", pady=(0, 12), padx=2)
             
-        try:
-            data = self.sheet.get_sheet_data()
-            for r_idx, row in enumerate(data):
-                if len(row) > 5:
-                    status = str(row[5]).upper()
-                    if "PASS" in status or "ACCEPTED" in status or status == "A":
-                        self.sheet.highlight_cells(
-                            row=r_idx,
-                            column=5,
-                            bg="#dcfce7",
-                            fg="#16a34a"
-                        )
-                    elif "FAIL" in status or "REJECTED" in status or "REWORK" in status or status == "B" or status == "C":
-                        self.sheet.highlight_cells(
-                            row=r_idx,
-                            column=5,
-                            bg="#fee2e2",
-                            fg="#dc2626"
-                        )
-        except Exception as e:
-            print("Status column styling error:", e)
+            # Bind click event for selection
+            card.bind("<Button-1>", lambda e, i=idx, c=card: select_card(i, c))
+            self._card_widgets.append(card)
+
+            # Header row of card
+            header_frame = ctk.CTkFrame(card, fg_color="transparent")
+            header_frame.pack(fill="x", padx=16, pady=(12, 8))
+            header_frame.bind("<Button-1>", lambda e, i=idx, c=card: select_card(i, c))
+
+            info_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
+            info_frame.pack(side="left")
+            info_frame.bind("<Button-1>", lambda e, i=idx, c=card: select_card(i, c))
+
+            lbl_sno = ctk.CTkLabel(
+                info_frame, text=f"#{s_no}", fg_color="#EEF2FF", text_color="#4F46E5",
+                font=("Segoe UI", 12, "bold"), corner_radius=8
+            )
+            lbl_sno.pack(side="left", padx=(0, 12))
+            lbl_sno.bind("<Button-1>", lambda e, i=idx, c=card: select_card(i, c))
+            
+            lbl_date = ctk.CTkLabel(info_frame, text=f"📅 {date_val}", text_color="#475569", font=("Segoe UI", 13))
+            lbl_date.pack(side="left", padx=(0, 12))
+            lbl_date.bind("<Button-1>", lambda e, i=idx, c=card: select_card(i, c))
+            
+            lbl_time = ctk.CTkLabel(info_frame, text=f"🕒 {time_val}", text_color="#475569", font=("Segoe UI", 13))
+            lbl_time.pack(side="left")
+            lbl_time.bind("<Button-1>", lambda e, i=idx, c=card: select_card(i, c))
+
+            if "PASS" in status or status == "A":
+                status_color = "#16A34A"
+                status_bg = "#DCFCE7"
+            else:
+                status_color = "#DC2626"
+                status_bg = "#FEE2E2"
+
+            lbl_status = ctk.CTkLabel(
+                header_frame, text=f"Status: {status}", fg_color=status_bg, text_color=status_color,
+                font=("Segoe UI", 11, "bold"), corner_radius=12
+            )
+            lbl_status.pack(side="right")
+            lbl_status.bind("<Button-1>", lambda e, i=idx, c=card: select_card(i, c))
+
+            divider = ctk.CTkFrame(card, fg_color="#E2E8F0", height=1)
+            divider.pack(fill="x", padx=16)
+            divider.bind("<Button-1>", lambda e, i=idx, c=card: select_card(i, c))
+
+            # Data Grid inside card
+            data_frame = ctk.CTkFrame(card, fg_color="transparent")
+            data_frame.pack(fill="x", padx=16, pady=12)
+            data_frame.bind("<Button-1>", lambda e, i=idx, c=card: select_card(i, c))
+
+            # Define grid columns
+            data_frame.grid_columnconfigure((0,1,2,3,4), weight=1)
+
+            def add_data_item(parent, row_idx, col_idx, label, value, val_font=("Segoe UI", 13, "bold"), col_span=1, i=idx, c=card):
+                f = ctk.CTkFrame(parent, fg_color="transparent")
+                f.grid(row=row_idx, column=col_idx, columnspan=col_span, sticky="w", pady=(0, 8))
+                f.bind("<Button-1>", lambda e: select_card(i, c))
+                
+                l1 = ctk.CTkLabel(f, text=label, text_color="#94A3B8", font=("Segoe UI", 11, "bold"))
+                l1.pack(anchor="w")
+                l1.bind("<Button-1>", lambda e: select_card(i, c))
+                
+                l2 = ctk.CTkLabel(f, text=value, text_color="#0F172A", font=val_font)
+                l2.pack(anchor="w")
+                l2.bind("<Button-1>", lambda e: select_card(i, c))
+
+            add_data_item(data_frame, 0, 0, "Reading", f"{reading}", val_font=("Segoe UI", 16, "bold"))
+            add_data_item(data_frame, 0, 1, "Offset", f"{offset}", val_font=("Segoe UI", 16, "bold"))
+            add_data_item(data_frame, 0, 2, "Air Gauge / Ch", f"{air_id} ({channel})")
+            add_data_item(data_frame, 0, 3, "Drawing", f"{drawing}")
+            add_data_item(data_frame, 0, 4, "Operator", f"{user}")
+
+            add_data_item(data_frame, 1, 0, "Comp ID", f"{comp_id}")
+            add_data_item(data_frame, 1, 1, "Item", f"{item}")
+            add_data_item(data_frame, 1, 2, "CNC ID", f"{cnc_id}")
+            add_data_item(data_frame, 1, 3, "Customer", f"{customer}", col_span=2)
 
     # ---------------------------
     # Loading overlay
@@ -15381,23 +15262,9 @@ class ReportPage(ctk.CTkFrame):
 
         # populate UI table
         try:
-            if self.use_tksheet and self.sheet:
-                self.sheet.set_sheet_data(table_rows)
-                self._style_table_status_cells()
-                self.sheet.refresh()
-            else:
-                for r in self.tree.get_children():
-                    self.tree.delete(r)
-                for rrow in table_rows:
-                    status = str(rrow[5]).upper() if len(rrow) > 5 else ""
-                    if "PASS" in status or "ACCEPTED" in status or status == "A":
-                        self.tree.insert("", "end", values=rrow, tags=("pass_row",))
-                    elif "FAIL" in status or "REJECTED" in status or "REWORK" in status or status == "B" or status == "C":
-                        self.tree.insert("", "end", values=rrow, tags=("fail_row",))
-                    else:
-                        self.tree.insert("", "end", values=rrow)
-        except Exception:
-            pass
+            self._populate_cards(table_rows)
+        except Exception as e:
+            print(f"Error populating cards: {e}")
 
         # ✅ NOW table is final → update all dynamic filters at once
         self._update_all_dynamic_filters(parsed_data)
@@ -15627,12 +15494,10 @@ class ReportPage(ctk.CTkFrame):
             self._load_token += 1  # cancel existing loads
             # REMOVED: self._suspend_auto_filter = True (This was preventing the filter from running)
 
-            if self.use_tksheet and getattr(self, "sheet", None):
-                self.sheet.set_sheet_data([])
-                self.sheet.refresh()
-            elif getattr(self, "tree", None):
-                for r in self.tree.get_children():
-                    self.tree.delete(r)
+            try:
+                self._populate_cards([])
+            except Exception:
+                pass
 
             self.app.status_label.configure(text="Refreshing…")
             self.data_loaded = False
@@ -15716,21 +15581,10 @@ class ReportPage(ctk.CTkFrame):
             self._current_visible = vis
             self._visible_file_indices = [fi for (_, fi) in vis]
 
-            if self.use_tksheet and self.sheet:
-                self.sheet.set_sheet_data(table_rows)
-                self._style_table_status_cells()
-                try: self.sheet.refresh()
-                except: pass
-            else:
-                for iid in self.tree.get_children(): self.tree.delete(iid)
-                for rrow in table_rows:
-                    status = str(rrow[5]).upper() if len(rrow) > 5 else ""
-                    if "PASS" in status or "ACCEPTED" in status or status == "A":
-                        self.tree.insert("", "end", values=rrow, tags=("pass_row",))
-                    elif "FAIL" in status or "REJECTED" in status or "REWORK" in status or status == "B" or status == "C":
-                        self.tree.insert("", "end", values=rrow, tags=("fail_row",))
-                    else:
-                        self.tree.insert("", "end", values=rrow)
+            try:
+                self._populate_cards(table_rows)
+            except Exception as e:
+                print("Error applying filter rows to cards:", e)
             self._update_empty_state(len(table_rows))
         except Exception:
             pass
@@ -15746,37 +15600,11 @@ class ReportPage(ctk.CTkFrame):
     # ---------------------------
     def _get_selected_visible(self):
         try:
-            if self.use_tksheet and self.sheet:
-                # try sheet API
-                try:
-                    sel = self.sheet.get_selected_rows()
-                    if sel and isinstance(sel, list) and len(sel) > 0:
-                        vis_idx = sel[0]
-                    else:
-                        cur = self.sheet.get_currently_selected()
-                        if cur and isinstance(cur, tuple):
-                            vis_idx = cur[0]
-                        else:
-                            return (None, None)
-                except Exception:
-                    return (None, None)
+            if hasattr(self, "_selected_card_index") and self._selected_card_index is not None:
+                vis_idx = self._selected_card_index
             else:
-                sel = self.tree.selection()
-                if not sel:
-                    return (None, None)
-                # find index of selected item in display order
-                items = self.tree.get_children()
-                try:
-                    vis_idx = items.index(sel[0])
-                except Exception:
-                    # fallback: linear search by comparing values
-                    vis_idx = None
-                    vals = self.tree.item(sel[0], "values")
-                    for i, iid in enumerate(items):
-                        if str(self.tree.item(iid, "values")) == str(vals):
-                            vis_idx = i; break
-                    if vis_idx is None:
-                        return (None, None)
+                return (None, None)
+
             # map to file_index
             if vis_idx is None or vis_idx < 0 or vis_idx >= len(self._current_visible):
                 return (None, None)
@@ -15960,23 +15788,8 @@ class ReportPage(ctk.CTkFrame):
         self._current_visible = new_vis
         self._visible_file_indices = [fi for (_, fi) in new_vis]
 
-        # Update UI table
         try:
-            if self.use_tksheet and self.sheet:
-                self.sheet.set_sheet_data(table_rows)
-                self._style_table_status_cells()
-                try: self.sheet.refresh()
-                except: pass
-            else:
-                for iid in self.tree.get_children(): self.tree.delete(iid)
-                for rrow in table_rows:
-                    status = str(rrow[5]).upper() if len(rrow) > 5 else ""
-                    if "PASS" in status or "ACCEPTED" in status or status == "A":
-                        self.tree.insert("", "end", values=rrow, tags=("pass_row",))
-                    elif "FAIL" in status or "REJECTED" in status or "REWORK" in status or status == "B" or status == "C":
-                        self.tree.insert("", "end", values=rrow, tags=("fail_row",))
-                    else:
-                        self.tree.insert("", "end", values=rrow)
+            self._populate_cards(table_rows)
             self._update_empty_state(len(table_rows))
         except Exception:
             pass

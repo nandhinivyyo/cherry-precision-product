@@ -595,6 +595,7 @@ class LicenseVerificationPage(ctk.CTkFrame):
                 fill=col, outline="", tags="shadow"
             )
 
+        # ── Main Card ─────────────────────────────────────────────────────
         self.card = ctk.CTkFrame(
             self,
             fg_color="white",
@@ -605,15 +606,6 @@ class LicenseVerificationPage(ctk.CTkFrame):
         self.card.place(relx=0.5, rely=0.5, anchor="center")
         self.card.pack_propagate(False)
         self.card.lift()
-
-        # ── Back Button ──────────────────────────────────────────────────────────
-        self.back_btn = ModernButton(
-            self.card, text="⬅ Back",
-            font=("Segoe UI", 11, "bold"), height=28, width=70,
-            fg_color="#F0F4F0", hover_color="#E2E8E2", text_color="#1B5E20",
-            corner_radius=6, command=self.go_back
-        )
-        self.back_btn.place(x=15, y=15)
 
         # ── Logo ──────────────────────────────────────────────────────────
         try:
@@ -648,7 +640,16 @@ class LicenseVerificationPage(ctk.CTkFrame):
             outline="#AAAAAA", width=2, dash=(5, 4)
         )
 
-        # Removed cloud icon as requested
+        # Upload-tray icon via PIL → PhotoImage on canvas
+        try:
+            from PIL import ImageTk as _ITK
+            _icon_pil = LicenseVerificationPage._make_cloud_icon(
+                size=64, color="#1A1A1A", bg="#F8FAFB")
+            self._cloud_photo = _ITK.PhotoImage(_icon_pil)
+            self._dz_canvas.create_image(dz_w // 2, 52, image=self._cloud_photo)
+        except Exception as _ce:
+            self._dz_canvas.create_text(dz_w // 2, 46, text="⬆",
+                                         font=("Segoe UI", 36), fill="#555")
 
         # "Drag & drop" label
         self._dz_canvas.create_text(
@@ -747,9 +748,47 @@ class LicenseVerificationPage(ctk.CTkFrame):
             except Exception as e:
                 self.error_label.configure(text=f"Error reading file: {str(e)}")
 
-    def go_back(self):
-        """Go back to the installer login page."""
-        self.controller.show_installer_login()
+    @staticmethod
+    def _make_cloud_icon(size=64, color="#1A1A1A", bg="#F8FAFB"):
+        """Draw an upload-tray icon (arrow + tray base) matching the reference UI."""
+        from PIL import Image, ImageDraw
+        ic = tuple(int(color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)) + (255,)
+        img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        lw = max(2, round(size / 20))
+        s   = float(size)
+        cx  = size // 2
+
+        # ─ Upward arrow ─
+        tip_y      = int(0.05 * s)   # very top of arrowhead
+        head_half  = int(0.18 * s)   # half-width of arrowhead base
+        shaft_top  = tip_y + head_half
+        shaft_btm  = int(0.55 * s)   # where shaft meets the tray
+
+        # Filled arrowhead triangle
+        draw.polygon([
+            (cx,            tip_y),
+            (cx - head_half, shaft_top),
+            (cx + head_half, shaft_top),
+        ], fill=ic)
+
+        # Arrow shaft
+        draw.line([cx, shaft_top, cx, shaft_btm], fill=ic, width=lw)
+
+        # ─ Tray base ─
+        tray_arm_w = int(0.38 * s)   # how far arms spread sideways from center
+        tray_top_y = int(0.55 * s)   # top of tray (= shaft bottom)
+        tray_btm_y = int(0.82 * s)   # bottom bar y
+
+        # Left arm: diagonal from shaft-bottom going down-left
+        draw.line([cx, tray_top_y, cx - tray_arm_w, tray_btm_y], fill=ic, width=lw)
+        # Right arm: diagonal from shaft-bottom going down-right
+        draw.line([cx, tray_top_y, cx + tray_arm_w, tray_btm_y], fill=ic, width=lw)
+        # Horizontal base bar
+        draw.line([cx - tray_arm_w, tray_btm_y, cx + tray_arm_w, tray_btm_y],
+                  fill=ic, width=lw)
+
+        return img
 
 
 def bezier_curve(p0, p1, p2, p3, num_points=100):
@@ -2264,120 +2303,62 @@ class OrganizationSetupPage(ctk.CTkFrame):
         super().__init__(parent)
         self.controller = controller
         
-        # ── Background ────────────────────────────────────────────────────
-        self.configure(fg_color="#F0F2F5")
-
-        # ── Shadow layer ──────────────────────────────────────────────────
-        self._shadow_canvas = tk.Canvas(self, bg="#F0F2F5", highlightthickness=0,
-                                        width=420, height=550)
-        self._shadow_canvas.place(relx=0.5, rely=0.5, anchor="center")
-
-        _shadow_colors = ["#CBCDD4", "#D3D5DC", "#DBDDE4", "#E3E5EB", "#EBECF0"]
-        for i, col in enumerate(_shadow_colors):
-            pad = i * 2
-            off = 5 - i
-            self._shadow_canvas.create_rectangle(
-                10 + pad + off, 12 + pad + off,
-                410 - pad + off, 542 - pad + off,
-                fill=col, outline="", tags="shadow"
-            )
-
-        # ── Main Card ─────────────────────────────────────────────────────
-        self.card = ctk.CTkFrame(
-            self, fg_color="white", corner_radius=28,
-            width=400, height=530
-        )
-        self.card.place(relx=0.5, rely=0.5, anchor="center")
-        self.card.pack_propagate(False)
-        self.card.lift()
-
-        # ── Back Button ──────────────────────────────────────────────────────────
-        self.back_btn = ModernButton(
-            self.card, text="⬅ Back",
-            font=("Segoe UI", 11, "bold"), height=28, width=70,
-            fg_color="#F0F4F0", hover_color="#E2E8E2", text_color="#1B5E20",
-            corner_radius=6, command=self.go_back
-        )
-        self.back_btn.place(x=15, y=15)
+        # Background
+        self.configure(fg_color="#F5F7FA") # Light nice background
         
-        # ── Logo ──────────────────────────────────────────────────────────
+        # Main Container - Split Card Style
+        self.main_card = ctk.CTkFrame(self, fg_color="white", corner_radius=20, width=1000, height=600)
+        self.main_card.place(relx=0.5, rely=0.5, anchor="center")
+        self.main_card.pack_propagate(False)
+
+        # --- LEFT SIDE: INFO PANEL ---
+        self.left_panel = ctk.CTkFrame(self.main_card, fg_color="#1565C0", corner_radius=20, width=400, height=600)
+        self.left_panel.place(x=0, y=0)
+        self.left_panel.pack_propagate(False)
+        
+        # Load cherry logo image
         try:
             logo_path = resource_path("settings/cherry_signup_logo.png")
             if os.path.exists(logo_path):
                 pil_img = Image.open(logo_path)
-                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(200, 62))
-                logo_lbl = ctk.CTkLabel(self.card, text="", image=self.cherry_logo_img, fg_color="transparent")
-                logo_lbl.pack(pady=(38, 6))
+                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(180, 86))
+                logo_lbl = ctk.CTkLabel(self.left_panel, text="", image=self.cherry_logo_img, fg_color="transparent")
+                logo_lbl.place(relx=0.5, rely=0.15, anchor="center")
         except Exception as e:
             print("Error loading setup cherry logo:", e)
         
-        # ── Title ─────────────────────────────────────────────────────────
-        ctk.CTkLabel(self.card, text="Organization Details", 
-                     font=("Segoe UI", 20, "bold"), text_color="#1A1A1A").pack(pady=(4, 2))
-        ctk.CTkLabel(self.card, text="Setup Wizard - Step 1", 
-                     font=("Segoe UI", 11), text_color="#757575").pack(pady=(0, 22))
+        # Content Left
+        ctk.CTkLabel(self.left_panel, text="Setup Wizard", 
+                     font=("Segoe UI", 24, "bold"), text_color="white").place(relx=0.5, rely=0.30, anchor="center")
+        
+        ctk.CTkLabel(self.left_panel, text="Step 1: Organization", 
+                     font=("Segoe UI", 18, "bold"), text_color="#BBDEFB").place(relx=0.5, rely=0.38, anchor="center")
+        
+        info_text = ("Welcome to your Air Gauge System.\n\n"
+                     "Please provide the company details.\n\n"
+                     "These settings can be changed later\n"
+                     "in the application settings.")
+        
+        ctk.CTkLabel(self.left_panel, text=info_text, 
+                     font=("Segoe UI", 13), text_color="#E3F2FD", justify="center").place(relx=0.5, rely=0.58, anchor="center")
 
-        # ── Form Fields ───────────────────────────────────────────────────
+        # --- RIGHT SIDE: FORM ---
+        self.right_panel = ctk.CTkFrame(self.main_card, fg_color="white", corner_radius=20, width=600, height=600)
+        self.right_panel.place(x=400, y=0)
+        
+        self.form_container = ctk.CTkFrame(self.right_panel, fg_color="transparent")
+        self.form_container.place(relx=0.5, rely=0.5, anchor="center")
+
+        # Title
+        ctk.CTkLabel(self.form_container, text="Organization Details", 
+                     font=("Segoe UI", 24, "bold"), text_color="#333").pack(pady=(0, 20))
+
+        # Form Fields
         self.fields = {}
         
-        # Company Name
-        comp_container = ctk.CTkFrame(self.card, fg_color="white",
-                                      border_color="#E0E0E0", border_width=1.5,
-                                      corner_radius=12, height=50, width=310)
-        comp_container.pack(pady=6)
-        comp_container.pack_propagate(False)
+        self.create_field("Company Name", "company_name")
+        self.create_field("Address", "address")
         
-        ctk.CTkLabel(comp_container, text="🏢", font=("Segoe UI", 15),
-                     text_color="#9E9E9E", fg_color="transparent").pack(side="left", padx=(14, 6))
-                     
-        self.fields["company_name"] = tk.Entry(comp_container, relief="flat", bd=0,
-                                   bg="white", fg="#333",
-                                   font=("Segoe UI", 13), insertbackground="#333")
-        self.fields["company_name"].pack(side="left", fill="x", expand=True, padx=(0, 14), pady=14)
-        
-        comp_ph = ctk.CTkLabel(comp_container, text="Company Name", font=("Segoe UI", 13),
-                               text_color="#BDBDBD", fg_color="transparent")
-        comp_ph.place(x=42, y=25, anchor="w")
-        comp_ph.bind("<Button-1>", lambda e: self.fields["company_name"].focus())
-
-        def _check_comp_ph(*_):
-            self.after(10, lambda: comp_ph.place_forget() if self.fields["company_name"].get()
-                       else comp_ph.place(x=42, y=25, anchor="w"))
-        self.fields["company_name"].bind("<KeyRelease>", _check_comp_ph)
-        self.fields["company_name"].bind("<FocusIn>",
-            lambda e: [comp_container.configure(border_color="#1A1A1A"), comp_ph.place_forget()])
-        self.fields["company_name"].bind("<FocusOut>",
-            lambda e: [comp_container.configure(border_color="#E0E0E0"), _check_comp_ph()])
-
-        # Address
-        addr_container = ctk.CTkFrame(self.card, fg_color="white",
-                                      border_color="#E0E0E0", border_width=1.5,
-                                      corner_radius=12, height=50, width=310)
-        addr_container.pack(pady=6)
-        addr_container.pack_propagate(False)
-        
-        ctk.CTkLabel(addr_container, text="📍", font=("Segoe UI", 15),
-                     text_color="#9E9E9E", fg_color="transparent").pack(side="left", padx=(14, 6))
-                     
-        self.fields["address"] = tk.Entry(addr_container, relief="flat", bd=0,
-                                   bg="white", fg="#333",
-                                   font=("Segoe UI", 13), insertbackground="#333")
-        self.fields["address"].pack(side="left", fill="x", expand=True, padx=(0, 14), pady=14)
-        
-        addr_ph = ctk.CTkLabel(addr_container, text="Address", font=("Segoe UI", 13),
-                               text_color="#BDBDBD", fg_color="transparent")
-        addr_ph.place(x=42, y=25, anchor="w")
-        addr_ph.bind("<Button-1>", lambda e: self.fields["address"].focus())
-
-        def _check_addr_ph(*_):
-            self.after(10, lambda: addr_ph.place_forget() if self.fields["address"].get()
-                       else addr_ph.place(x=42, y=25, anchor="w"))
-        self.fields["address"].bind("<KeyRelease>", _check_addr_ph)
-        self.fields["address"].bind("<FocusIn>",
-            lambda e: [addr_container.configure(border_color="#1A1A1A"), addr_ph.place_forget()])
-        self.fields["address"].bind("<FocusOut>",
-            lambda e: [addr_container.configure(border_color="#E0E0E0"), _check_addr_ph()])
-
         try:
             self.fields["company_name"].focus()
             self.fields["company_name"].bind("<Return>", lambda event: self.fields["address"].focus())
@@ -2385,22 +2366,30 @@ class OrganizationSetupPage(ctk.CTkFrame):
         except Exception as e:
             print(f"Error binding OrganizationSetupPage: {e}")
 
-        # ── Error Label ───────────────────────────────────────────────────
-        self.error_label = ctk.CTkLabel(self.card, text="", text_color="#757575", font=("Segoe UI", 11))
+        # Error Label
+        self.error_label = ctk.CTkLabel(self.form_container, text="", text_color="red", font=("Segoe UI", 11))
         self.error_label.pack(pady=(10, 5))
 
-        # ── Save Button ───────────────────────────────────────────────────
-        self.save_btn = ModernButton(
-            self.card, text="NEXT ➔", 
-            font=("Segoe UI", 12, "bold"),
-            height=42, width=280,
-            fg_color="#1A1A1A", hover_color="#333333",
-            text_color="white", corner_radius=10,
-            command=self.on_save
-        )
-        self.save_btn.pack(pady=10)
+        # Save Button
+        self.save_btn = ModernButton(self.form_container, text="Next: Admin Setup ➔", 
+                                      font=("Segoe UI", 13, "bold"),
+                                      height=45, width=250,
+                                      fg_color="#1976D2", hover_color="#1565C0",
+                                      corner_radius=8,
+                                      command=self.on_save)
+        self.save_btn.pack(pady=20)
 
-
+    def create_field(self, label_text, key):
+        frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
+        frame.pack(pady=10, fill="x")
+        
+        ctk.CTkLabel(frame, text=label_text, font=("Segoe UI", 11, "bold"), text_color="#555", anchor="w").pack(fill="x", pady=(0, 2))
+        
+        entry = ctk.CTkEntry(frame, height=40, width=320, font=("Segoe UI", 13), border_color="#E0E0E0", corner_radius=6)
+        entry.pack(fill="x")
+        
+        self.fields[key] = entry
+        
     def on_save(self):
         company = self.fields["company_name"].get().strip()
         address = self.fields["address"].get().strip()
@@ -2411,10 +2400,6 @@ class OrganizationSetupPage(ctk.CTkFrame):
 
         self.controller.show_admin_setup(company, address)
 
-    def go_back(self):
-        """Go back to the license verification page."""
-        self.controller.show_license_verification()
-
 
 class AdminSetupPage(ctk.CTkFrame):
     def __init__(self, parent, controller, company, address):
@@ -2423,108 +2408,84 @@ class AdminSetupPage(ctk.CTkFrame):
         self.company = company
         self.address = address
         
-        # ── Background ────────────────────────────────────────────────────
-        self.configure(fg_color="#F0F2F5")
-
-        # ── Shadow layer ──────────────────────────────────────────────────
-        self._shadow_canvas = tk.Canvas(self, bg="#F0F2F5", highlightthickness=0,
-                                        width=420, height=650)
-        self._shadow_canvas.place(relx=0.5, rely=0.5, anchor="center")
-
-        _shadow_colors = ["#CBCDD4", "#D3D5DC", "#DBDDE4", "#E3E5EB", "#EBECF0"]
-        for i, col in enumerate(_shadow_colors):
-            pad = i * 2
-            off = 5 - i
-            self._shadow_canvas.create_rectangle(
-                10 + pad + off, 12 + pad + off,
-                410 - pad + off, 642 - pad + off,
-                fill=col, outline="", tags="shadow"
-            )
-
-        # ── Main Card ─────────────────────────────────────────────────────
-        self.card = ctk.CTkFrame(
-            self, fg_color="white", corner_radius=28,
-            width=400, height=630
-        )
-        self.card.place(relx=0.5, rely=0.5, anchor="center")
-        self.card.pack_propagate(False)
-        self.card.lift()
-
-        # ── Back Button ───────────────────────────────────────────────────
-        self.back_btn = ModernButton(
-            self.card, text="⬅ Back",
-            font=("Segoe UI", 11, "bold"), height=28, width=70,
-            fg_color="#F0F4F0", hover_color="#E2E8E2", text_color="#1B5E20",
-            corner_radius=6, command=self.go_back
-        )
-        self.back_btn.place(x=15, y=15)
+        # Background
+        self.configure(fg_color="#F5F7FA")
         
-        # ── Logo ──────────────────────────────────────────────────────────
+        # Main Container
+        self.main_card = ctk.CTkFrame(self, fg_color="white", corner_radius=20, width=1000, height=600)
+        self.main_card.place(relx=0.5, rely=0.5, anchor="center")
+        self.main_card.pack_propagate(False)
+
+        # --- LEFT SIDE: INFO PANEL ---
+        self.left_panel = ctk.CTkFrame(self.main_card, fg_color="#1565C0", corner_radius=20, width=400, height=600)
+        self.left_panel.place(x=0, y=0)
+        self.left_panel.pack_propagate(False)
+        
+        # Load cherry logo image
         try:
             logo_path = resource_path("settings/cherry_signup_logo.png")
             if os.path.exists(logo_path):
                 pil_img = Image.open(logo_path)
-                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(200, 62))
-                logo_lbl = ctk.CTkLabel(self.card, text="", image=self.cherry_logo_img, fg_color="transparent")
-                logo_lbl.pack(pady=(38, 6))
+                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(180, 86))
+                logo_lbl = ctk.CTkLabel(self.left_panel, text="", image=self.cherry_logo_img, fg_color="transparent")
+                logo_lbl.place(relx=0.5, rely=0.15, anchor="center")
         except Exception as e:
             print("Error loading setup cherry logo:", e)
         
-        # ── Title ─────────────────────────────────────────────────────────
-        ctk.CTkLabel(self.card, text="Admin Credentials", 
-                     font=("Segoe UI", 20, "bold"), text_color="#1A1A1A").pack(pady=(4, 2))
-        ctk.CTkLabel(self.card, text="Setup Wizard - Step 2", 
-                     font=("Segoe UI", 11), text_color="#757575").pack(pady=(0, 16))
-
-        # ── Form Fields ───────────────────────────────────────────────────
+        ctk.CTkLabel(self.left_panel, text="Setup Wizard", 
+                     font=("Segoe UI", 24, "bold"), text_color="white").place(relx=0.5, rely=0.30, anchor="center")
         
-        def _make_field(icon, ph_text, is_pass=False):
-            container = ctk.CTkFrame(self.card, fg_color="white",
-                                     border_color="#E0E0E0", border_width=1.5,
-                                     corner_radius=12, height=46, width=310)
-            container.pack(pady=4)
-            container.pack_propagate(False)
-            
-            ctk.CTkLabel(container, text=icon, font=("Segoe UI", 15),
-                         text_color="#9E9E9E", fg_color="transparent").pack(side="left", padx=(14, 6))
-                         
-            entry = tk.Entry(container, relief="flat", bd=0,
-                             bg="white", fg="#333",
-                             font=("Segoe UI", 13), insertbackground="#333",
-                             show="●" if is_pass else "")
-            entry.pack(side="left", fill="x", expand=True, padx=(0, 14), pady=12)
-            
-            ph = ctk.CTkLabel(container, text=ph_text, font=("Segoe UI", 13),
-                              text_color="#BDBDBD", fg_color="transparent")
-            ph.place(x=42, y=23, anchor="w")
-            ph.bind("<Button-1>", lambda e: entry.focus())
-
-            def _check_ph(*_):
-                self.after(10, lambda: ph.place_forget() if entry.get()
-                           else ph.place(x=42, y=23, anchor="w"))
-            entry.bind("<KeyRelease>", _check_ph)
-            entry.bind("<FocusIn>",
-                lambda e: [container.configure(border_color="#1A1A1A"), ph.place_forget()])
-            entry.bind("<FocusOut>",
-                lambda e: [container.configure(border_color="#E0E0E0"), _check_ph()])
-                
-            return entry, _check_ph
-
-        self.name_entry, _ = _make_field("👤", "Admin Name")
-        self.pass_entry, _ = _make_field("🔒", "Password", True)
-        self.confirm_entry, _ = _make_field("🔒", "Confirm Password", True)
+        ctk.CTkLabel(self.left_panel, text="Step 2: Administrator", 
+                     font=("Segoe UI", 18, "bold"), text_color="#BBDEFB").place(relx=0.5, rely=0.38, anchor="center")
         
-        # Rebind validations
-        self.pass_entry.bind("<KeyRelease>", self.validate_password, add="+")
-        self.confirm_entry.bind("<KeyRelease>", self.validate_password, add="+")
+        info_text = ("Set up the primary admin account.\n\n"
+                     "This account will be used to access\n"
+                     "system settings and configurations.")
+        
+        ctk.CTkLabel(self.left_panel, text=info_text, 
+                     font=("Segoe UI", 13), text_color="#E3F2FD", justify="center").place(relx=0.5, rely=0.58, anchor="center")
+
+        # --- RIGHT SIDE: FORM ---
+        self.right_panel = ctk.CTkFrame(self.main_card, fg_color="white", corner_radius=20, width=600, height=600)
+        self.right_panel.place(x=400, y=0)
+        
+        self.form_container = ctk.CTkFrame(self.right_panel, fg_color="transparent")
+        self.form_container.place(relx=0.5, rely=0.5, anchor="center")
+
+        ctk.CTkLabel(self.form_container, text="Admin Credentials", 
+                     font=("Segoe UI", 24, "bold"), text_color="#333").pack(pady=(0, 10))
+
+        # Admin Name
+        name_frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
+        name_frame.pack(pady=5, fill="x")
+        ctk.CTkLabel(name_frame, text="Admin Name", font=("Segoe UI", 11, "bold"), text_color="#555", anchor="w").pack(fill="x", pady=(0, 2))
+        self.name_entry = ctk.CTkEntry(name_frame, height=40, width=320, font=("Segoe UI", 13), border_color="#E0E0E0", corner_radius=6)
+        self.name_entry.pack(fill="x")
+        self.name_entry.focus()
+
+        # Password
+        pass_frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
+        pass_frame.pack(pady=5, fill="x")
+        ctk.CTkLabel(pass_frame, text="Password", font=("Segoe UI", 11, "bold"), text_color="#555", anchor="w").pack(fill="x", pady=(0, 2))
+        self.pass_entry = ctk.CTkEntry(pass_frame, height=40, width=320, font=("Segoe UI", 13), show="●", border_color="#E0E0E0", corner_radius=6)
+        self.pass_entry.pack(fill="x")
+        self.pass_entry.bind("<KeyRelease>", self.validate_password)
+
+        # Confirm Password
+        confirm_frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
+        confirm_frame.pack(pady=5, fill="x")
+        ctk.CTkLabel(confirm_frame, text="Confirm Password", font=("Segoe UI", 11, "bold"), text_color="#555", anchor="w").pack(fill="x", pady=(0, 2))
+        self.confirm_entry = ctk.CTkEntry(confirm_frame, height=40, width=320, font=("Segoe UI", 13), show="●", border_color="#E0E0E0", corner_radius=6)
+        self.confirm_entry.pack(fill="x")
+        self.confirm_entry.bind("<KeyRelease>", self.validate_password)
 
         self.name_entry.bind("<Return>", lambda event: self.pass_entry.focus())
         self.pass_entry.bind("<Return>", lambda event: self.confirm_entry.focus())
         self.confirm_entry.bind("<Return>", lambda event: self.save_btn.invoke() if self.save_btn.cget('state') == 'normal' else None)
 
-        # ── Password Rules Checklist ──────────────────────────────────────
-        self.rules_frame = ctk.CTkFrame(self.card, fg_color="transparent")
-        self.rules_frame.pack(pady=(6, 0))
+        # Password Rules Checklist
+        self.rules_frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
+        self.rules_frame.pack(pady=5, fill="x")
         
         self.rule_labels = {}
         rules = [("upper", "One uppercase letter"), ("lower", "One lowercase letter"),
@@ -2532,24 +2493,23 @@ class AdminSetupPage(ctk.CTkFrame):
                  ("match", "Passwords match")]
         
         for key, text in rules:
-            lbl = ctk.CTkLabel(self.rules_frame, text="❌ " + text, font=("Segoe UI", 10), text_color="#757575", anchor="w")
-            lbl.pack(fill="x", pady=0)
+            lbl = ctk.CTkLabel(self.rules_frame, text="❌ " + text, font=("Segoe UI", 11), text_color="#757575", anchor="w")
+            lbl.pack(fill="x")
             self.rule_labels[key] = lbl
 
-        # ── Error Label ───────────────────────────────────────────────────
-        self.error_label = ctk.CTkLabel(self.card, text="", text_color="#757575", font=("Segoe UI", 11))
-        self.error_label.pack(pady=(2, 2))
+        # Error
+        self.error_label = ctk.CTkLabel(self.form_container, text="", text_color="red", font=("Segoe UI", 11))
+        self.error_label.pack(pady=(5, 5))
 
-        # ── Save Button ───────────────────────────────────────────────────
-        self.save_btn = ModernButton(
-            self.card, text="SAVE & LAUNCH ➔", 
-            font=("Segoe UI", 12, "bold"),
-            height=42, width=280,
-            fg_color="#1A1A1A", hover_color="#333333",
-            state="disabled", text_color="white", corner_radius=10,
-            command=self.on_save
-        )
-        self.save_btn.pack(pady=(0, 10))
+        # Save
+        self.save_btn = ModernButton(self.form_container, text="Save & Launch", 
+                                      font=("Segoe UI", 13, "bold"),
+                                      height=45, width=250,
+                                      fg_color="#1976D2", hover_color="#1565C0",
+                                      state="disabled",
+                                      corner_radius=8,
+                                      command=self.on_save)
+        self.save_btn.pack(pady=10)
 
     def validate_password(self, event=None):
         password = self.pass_entry.get()
@@ -2593,10 +2553,6 @@ class AdminSetupPage(ctk.CTkFrame):
             self.controller.complete_setup()
         except Exception as e:
             self.error_label.configure(text=f"Error saving: {e}")
-
-    def go_back(self):
-        """Go back to the organization setup page."""
-        self.controller.show_setup_wizard()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -2849,10 +2805,6 @@ class CherryApp(ctk.CTk):
 
     def show_installer_login(self):
         """Show the Installer Login Page (Hardcoded)."""
-        if hasattr(self, "license_verify"):
-            self.license_verify.pack_forget()
-            self.license_verify.destroy()
-            
         self.installer_login = InstallerLoginPage(self, self)
         self.installer_login.pack(fill="both", expand=True)
 
@@ -2861,9 +2813,6 @@ class CherryApp(ctk.CTk):
         if hasattr(self, "installer_login"):
             self.installer_login.pack_forget()
             self.installer_login.destroy()
-        if hasattr(self, "setup_page"):
-            self.setup_page.pack_forget()
-            self.setup_page.destroy()
         
         self.license_verify = LicenseVerificationPage(self, self)
         self.license_verify.pack(fill="both", expand=True)
@@ -2873,9 +2822,6 @@ class CherryApp(ctk.CTk):
         if hasattr(self, "license_verify"):
             self.license_verify.pack_forget()
             self.license_verify.destroy()
-        if hasattr(self, "admin_setup"):
-            self.admin_setup.pack_forget()
-            self.admin_setup.destroy()
         
         self.setup_page = OrganizationSetupPage(self, self)
         self.setup_page.pack(fill="both", expand=True)
@@ -13163,14 +13109,14 @@ class ReportPage(ctk.CTkFrame):
             style.configure('TCombobox',
                             fieldbackground='white',
                             background='white',
-                            foreground='#374151',
-                            bordercolor='#e5e7eb',
-                            arrowcolor='#7c3aed',
+                            foreground='#333333',
+                            bordercolor='#E0E0E0',
+                            arrowcolor='#2E7D32',
                             arrowsize=12,
                             font=("Segoe UI", 11))
             style.map('TCombobox',
                       fieldbackground=[('readonly', 'white')],
-                      bordercolor=[('focus', '#7c3aed'), ('hover', '#a78bfa')])
+                      bordercolor=[('focus', '#2E7D32'), ('hover', '#43A047')])
         except Exception as e:
             print("Error styling combobox:", e)
 
@@ -13446,86 +13392,123 @@ class ReportPage(ctk.CTkFrame):
         ref_btn.pack(side="left", padx=6)
 
     def _build_header(self):
-        # Configure page background
-        self.configure(fg_color="#f8fafc")
-
-        # Full-width white header bar (matches reference image)
-        header_strip = ctk.CTkFrame(self, fg_color="#ffffff", corner_radius=0, border_width=0)
-        header_strip.pack(fill="x")
-
-        inner = ctk.CTkFrame(header_strip, fg_color="transparent")
-        inner.pack(fill="x", padx=24, pady=(18, 16))
-
-        # ── Left: Title block ──────────────────────────────────────
-        title_container = ctk.CTkFrame(inner, fg_color="transparent")
-        title_container.pack(side="left", fill="y", anchor="center")
-
-        title_lbl = ctk.CTkLabel(
-            title_container,
-            text="Analytics & Inspection Report",
-            font=("Segoe UI", 22, "bold"),
-            text_color="#111827",
-            anchor="w"
-        )
-        title_lbl.pack(anchor="w")
-
-        subtitle_lbl = ctk.CTkLabel(
-            title_container,
-            text="Filter, analyze, and manage your production data.",
-            font=("Segoe UI", 11),
-            text_color="#6b7280",
-            anchor="w"
-        )
-        subtitle_lbl.pack(anchor="w", pady=(2, 0))
-
-        # ── Right: Action buttons ──────────────────────────────────
-        btn_container = ctk.CTkFrame(inner, fg_color="transparent")
-        btn_container.pack(side="right", fill="y", anchor="center")
-
-        self.excel_btn = ctk.CTkButton(
-            btn_container,
-            text="📊  Export Excel",
-            text_color="#16a34a",
-            fg_color="#ffffff",
-            hover_color="#f0fdf4",
-            border_width=1,
-            border_color="#d1d5db",
-            height=36,
+        """Compact Report toolbar matching the USB-style action bar."""
+        header = ctk.CTkFrame(
+            self,
+            fg_color="white",
             corner_radius=8,
-            font=("Segoe UI", 11),
+            border_width=1,
+            border_color="#E0E0E0",
+            height=72
+        )
+        header.pack(fill="x", padx=20, pady=(10, 5))
+        header.pack_propagate(False)
+
+        green_bar = ctk.CTkFrame(header, fg_color="#007B43", width=6, corner_radius=0)
+        green_bar.place(x=0, y=0, relheight=1)
+
+        header_inner = ctk.CTkFrame(header, fg_color="transparent")
+        header_inner.pack(fill="both", expand=True, padx=(25, 20), pady=10)
+
+        left_frame = ctk.CTkFrame(header_inner, fg_color="transparent")
+        left_frame.pack(side="left", fill="y")
+
+        logo_frame = ctk.CTkFrame(left_frame, fg_color="#007B43", width=44, height=44, corner_radius=8)
+        logo_frame.pack(side="left", padx=(0, 12))
+        logo_frame.pack_propagate(False)
+
+        ctk.CTkLabel(
+            logo_frame,
+            text="\U0001F4CA",
+            font=("Segoe UI", 20, "bold"),
+            text_color="white",
+            fg_color="transparent"
+        ).pack(expand=True)
+
+        ctk.CTkLabel(
+            left_frame,
+            text="Report",
+            font=("Segoe UI", 22, "bold"),
+            text_color="#007B43"
+        ).pack(side="left", padx=(0, 15))
+
+        self.excel_btn = ModernButton(
+            left_frame,
+            text="\U0001F4CA Export Excel",
+            text_color="white",
+            width=120,
+            height=38,
+            font=("Segoe UI", 13, "bold"),
+            fg_color="#007B43",
+            hover_color="#005C32",
+            corner_radius=6,
+            border_width=0,
             command=lambda: self.export_data("excel")
         )
-        self.excel_btn.pack(side="left", padx=4)
+        self.excel_btn.pack(side="left", padx=6)
 
-        self.pdf_btn = ctk.CTkButton(
-            btn_container,
-            text="📄  Export PDF",
-            text_color="#dc2626",
-            fg_color="#ffffff",
-            hover_color="#fef2f2",
-            border_width=1,
-            border_color="#d1d5db",
-            height=36,
-            corner_radius=8,
-            font=("Segoe UI", 11),
+        self.pdf_btn = ModernButton(
+            left_frame,
+            text="\U0001F4C4 Export PDF",
+            text_color="white",
+            width=120,
+            height=38,
+            font=("Segoe UI", 13, "bold"),
+            fg_color="#007B43",
+            hover_color="#005C32",
+            corner_radius=6,
+            border_width=0,
             command=lambda: self.export_data("pdf")
         )
-        self.pdf_btn.pack(side="left", padx=4)
+        self.pdf_btn.pack(side="left", padx=6)
 
-        del_btn = ctk.CTkButton(
-            btn_container,
-            text="🗑  Delete Selected",
-            text_color="#dc2626",
-            fg_color="#ffffff",
-            hover_color="#fef2f2",
-            border_width=1,
-            border_color="#d1d5db",
-            height=36,
-            corner_radius=8,
-            font=("Segoe UI", 11),
+        center_frame = ctk.CTkFrame(header_inner, fg_color="transparent")
+        center_frame.pack(side="left", fill="y", expand=True)
+
+        self.analyze_btn = ModernButton(
+            center_frame,
+            text="\U0001F4C8 Analyze",
+            width=120,
+            height=38,
+            font=("Segoe UI", 13, "bold"),
+            fg_color="#0D47A1",
+            hover_color="#0a3c85",
+            corner_radius=6,
+            border_width=0,
+            command=self.open_analyze_page
+        )
+        self.analyze_btn.pack()
+
+        right_frame = ctk.CTkFrame(header_inner, fg_color="transparent")
+        right_frame.pack(side="right", fill="y")
+
+        del_btn = ModernButton(
+            right_frame,
+            text="\U0001F5D1 Delete",
+            width=100,
+            height=38,
+            font=("Segoe UI", 13, "bold"),
+            fg_color="#E53935",
+            hover_color="#C62828",
+            corner_radius=6,
+            border_width=0,
             command=self._on_delete_clicked
         )
-        del_btn.pack(side="left", padx=4)
+        del_btn.pack(side="left", padx=6)
+
+        ref_btn = ModernButton(
+            right_frame,
+            text="\U0001F504 Refresh",
+            width=100,
+            height=38,
+            font=("Segoe UI", 13, "bold"),
+            fg_color="#00695C",
+            hover_color="#00574b",
+            corner_radius=6,
+            border_width=0,
+            command=self.refresh_table_data
+        )
+        ref_btn.pack(side="left", padx=6)
 
     def _load_logo_base64(self):
         """Load cherry.png safely (supports EXE and any PC)."""
@@ -13865,501 +13848,373 @@ class ReportPage(ctk.CTkFrame):
     # ---------------------------
     # Filter grid (2x4)
     # ---------------------------
-    def _build_filter_grid(self):
-        # White card — matches reference image style
-        self.filter_card = ctk.CTkFrame(
+    def _build_filter_grid_legacy(self):
+        # === Modern Filter Panel Container (Transparent since cards themselves have borders) ===
+        filter_container = ctk.CTkFrame(
             self,
-            fg_color="#ffffff",
-            corner_radius=12,
-            border_width=1,
-            border_color="#e5e7eb"
+            fg_color="transparent"
         )
-        self.filter_card.pack(fill="x", padx=24, pady=(16, 8))
+        filter_container.pack(fill="x", padx=20, pady=(0, 10))
+        
+        filter_frame = ctk.CTkFrame(filter_container, fg_color="transparent")
+        filter_frame.pack(fill="x", padx=0, pady=0)
 
-        # Card header row
-        card_hdr = ctk.CTkFrame(self.filter_card, fg_color="transparent")
-        card_hdr.pack(fill="x", padx=20, pady=(16, 12))
+        # 4 columns for clean grid:
+        # Col 0: Date Time (From/To) [Wide]
+        # Col 1: Item / Operator
+        # Col 2: AirGauge ID / Machine ID
+        # Col 3: Drawing / Customer
+        filter_frame.grid_columnconfigure(0, weight=3)
+        filter_frame.grid_columnconfigure(1, weight=2)
+        filter_frame.grid_columnconfigure(2, weight=2)
+        filter_frame.grid_columnconfigure(3, weight=2)
 
+        self.filter_cells = []
+        ROWS, COLS = 2, 4
+        for r in range(ROWS):
+            row_list = []
+            for c in range(COLS):
+                card = ctk.CTkFrame(
+                    filter_frame,
+                    fg_color="white",
+                    corner_radius=12,
+                    border_width=1,
+                    border_color="#E0E0E0",
+                    height=85
+                )
+                card.grid(row=r, column=c, sticky="nsew", padx=6, pady=6)
+                card.grid_propagate(False)
+                row_list.append(card)
+            self.filter_cells.append(row_list)
+
+        # ---------------------------------------------------------
+        # Card 0,0: Date Time (From)
+        # ---------------------------------------------------------
+        from_card = self.filter_cells[0][0]
         ctk.CTkLabel(
-            card_hdr,
-            text="🔍  Filter & Sort Parameters",
-            font=("Segoe UI", 13, "bold"),
-            text_color="#374151",
-            anchor="w"
-        ).pack(anchor="w")
-
-        # Thin divider
-        ctk.CTkFrame(self.filter_card, fg_color="#f3f4f6", height=1, corner_radius=0).pack(fill="x")
-
-        # Grid container
-        grid_frame = ctk.CTkFrame(self.filter_card, fg_color="transparent")
-        grid_frame.pack(fill="x", padx=20, pady=(16, 0))
-
-        for col in range(4):
-            grid_frame.grid_columnconfigure(col, weight=1, uniform="filter_grid")
-
-        def make_label(parent, text):
-            """Uppercase small gray label matching reference image."""
-            ctk.CTkLabel(
-                parent,
-                text=text.upper(),
-                font=("Segoe UI", 9, "bold"),
-                text_color="#9ca3af",
-                anchor="w"
-            ).pack(anchor="w", pady=(0, 4))
-
-        def get_cell(row, col, padx=(0, 16)):
-            cell = ctk.CTkFrame(grid_frame, fg_color="transparent")
-            cell.grid(row=row, column=col, sticky="nsew", padx=padx, pady=(0, 16))
-            return cell
-
-        # ── ROW 1 ──────────────────────────────────────────────────
-        c00 = get_cell(0, 0)
-        make_label(c00, "From Date & Time")
-        self.from_date_entry, self.from_time_spinner = self._add_date_time_widget(
-            c00, self.from_date_var, self.from_time_var)
-
-        c01 = get_cell(0, 1)
-        make_label(c01, "To Date & Time")
-        self.to_date_entry, self.to_time_spinner = self._add_date_time_widget(
-            c01, self.to_date_var, self.to_time_var)
-
-        c02 = get_cell(0, 2)
-        make_label(c02, "Item ID / Name")
-        self.item_combo = self._create_searchable_combobox_new(
-            c02, self.item_var, self._items_display_list())
-
-        c03 = get_cell(0, 3, padx=(0, 0))
-        make_label(c03, "AirGauge ID / Channel")
-        ag_ch_frame = ctk.CTkFrame(c03, fg_color="transparent")
-        ag_ch_frame.pack(fill="x")
-        ag_ch_frame.grid_columnconfigure(0, weight=1)
-        ag_ch_frame.grid_columnconfigure(1, weight=1)
-
-        self.airgauge_combo = self._create_searchable_combobox_new(
-            ag_ch_frame, self.airgauge_var, self._load_airgauge_ids(), pack=False)
-        self.airgauge_combo.grid(row=0, column=0, sticky="ew", padx=(0, 4))
-        self.airgauge_combo._base_values = list(self.airgauge_combo.cget("values"))
-
-        self.channel_combo = self._create_searchable_combobox_new(
-            ag_ch_frame, self.channel_var, ["All"], pack=False)
-        self.channel_combo.grid(row=0, column=1, sticky="ew", padx=(4, 0))
-        self.channel_combo._base_values = ["All"]
-
-        # ── ROW 2 ──────────────────────────────────────────────────
-        c10 = get_cell(1, 0)
-        make_label(c10, "Drawing Number")
-        self.drawing_combo = self._create_searchable_combobox_new(
-            c10, self.drawing_var, ["All"])
-
-        c11 = get_cell(1, 1)
-        make_label(c11, "Operator Name")
-        self.operator_combo = self._create_searchable_combobox_new(
-            c11, self.operator_var, self._operators_display_list())
-
-        c12 = get_cell(1, 2)
-        make_label(c12, "Machine ID")
-        self.machine_combo = self._create_searchable_combobox_new(
-            c12, self.machine_var, self._machines_display_list())
-
-        c13 = get_cell(1, 3, padx=(0, 0))
-        make_label(c13, "Customer")
-        self.customer_combo = self._create_searchable_combobox_new(
-            c13, self.customer_var, ["All"])
-
-        # ── Action buttons ─────────────────────────────────────────
-        actions_bar = ctk.CTkFrame(self.filter_card, fg_color="transparent")
-        actions_bar.pack(fill="x", padx=20, pady=(4, 20))
-
-        buttons_wrapper = ctk.CTkFrame(actions_bar, fg_color="transparent")
-        buttons_wrapper.pack(side="right")
-
-        self.ref_btn = ctk.CTkButton(
-            buttons_wrapper,
-            text="⟳  Refresh Sort",
-            text_color="#374151",
-            fg_color="#ffffff",
-            hover_color="#f9fafb",
-            border_width=1,
-            border_color="#d1d5db",
-            height=38,
-            width=140,
-            corner_radius=8,
-            font=("Segoe UI", 11),
-            command=self.refresh_table_data
-        )
-        self.ref_btn.pack(side="left", padx=6)
-
-        self.analyze_btn = ctk.CTkButton(
-            buttons_wrapper,
-            text="✦  Analyze Data",
-            text_color="#ffffff",
-            fg_color="#7c3aed",
-            hover_color="#6d28d9",
-            height=38,
-            width=150,
-            corner_radius=8,
+            from_card, 
+            text="Date Time (From)", 
             font=("Segoe UI", 11, "bold"),
-            command=self.open_analyze_page
+            text_color="#757575"
+        ).pack(anchor="w", padx=12, pady=(8, 2))
+        
+        from_dt_container = ctk.CTkFrame(from_card, fg_color="transparent")
+        from_dt_container.pack(fill="x", padx=10, pady=(2, 8))
+        from_dt_container.grid_columnconfigure(0, weight=3)
+        from_dt_container.grid_columnconfigure(1, weight=2)
+
+        # Date Entry Container (to place the 📅 calendar icon inside)
+        from_date_container = ctk.CTkFrame(from_dt_container, fg_color="transparent")
+        from_date_container.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
+        
+        self.from_date_entry = ctk.CTkEntry(
+            from_date_container, 
+            textvariable=self.from_date_var,
+            placeholder_text="dd/mm/yyyy", 
+            height=30, 
+            corner_radius=6, 
+            border_color="#E0E0E0",
+            fg_color="white",
+            text_color="#333333",
+            font=("Segoe UI", 12)
         )
-        self.analyze_btn.pack(side="left", padx=6)
-
-    def _add_date_time_widget(self, parent, date_var, time_var):
-        body = ctk.CTkFrame(parent, fg_color="transparent")
-        body.pack(fill="x", pady=(2, 4))
-        body.grid_columnconfigure(0, weight=3)
-        body.grid_columnconfigure(1, weight=2)
-
-        date_wrap = ctk.CTkFrame(
-            body,
-            fg_color="#ffffff",
-            corner_radius=8,
-            border_width=1,
-            border_color="#e5e7eb",
-            height=38
-        )
-        date_wrap.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
-        date_wrap.pack_propagate(False)
-
-        entry = tk.Entry(
-            date_wrap,
-            textvariable=date_var,
-            relief="flat",
-            bd=0,
-            bg="white",
-            fg="#374151",
-            font=("Segoe UI", 11),
-            insertbackground="#374151",
-            state="readonly"
-        )
-        entry.pack(side="left", fill="both", expand=True, padx=(10, 4))
-
-        cal_btn = ctk.CTkLabel(
-            date_wrap,
-            text="📅",
-            font=("Segoe UI", 12),
-            text_color="#7c3aed",
+        self.from_date_entry.pack(side="left", fill="x", expand=True)
+        
+        from_cal_btn = ctk.CTkLabel(
+            from_date_container, 
+            text="📅", 
+            font=("Segoe UI", 13), 
+            text_color="#2E7D32", 
             cursor="hand2"
         )
-        cal_btn.pack(side="right", padx=(0, 8))
-
-        def on_entry_focus(e):
-            date_wrap.configure(border_color="#7c3aed")
-        def on_entry_leave(e):
-            date_wrap.configure(border_color="#e5e7eb")
-
-        entry.bind("<FocusIn>", on_entry_focus)
-        entry.bind("<FocusOut>", on_entry_leave)
-
+        from_cal_btn.pack(side="right", padx=(4, 0))
         if Calendar is not None:
-            entry.bind("<Button-1>", lambda e: self.open_calendar_popup(date_wrap, date_var))
-            cal_btn.bind("<Button-1>", lambda e: self.open_calendar_popup(date_wrap, date_var))
+            self.from_date_entry.bind("<Button-1>", lambda e: self.open_calendar_popup(self.from_date_entry, self.from_date_var))
+            from_cal_btn.bind("<Button-1>", lambda e: self.open_calendar_popup(self.from_date_entry, self.from_date_var))
 
-        spinner = self._create_time_spinner_new(body, time_var)
-        spinner.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
-        return entry, spinner
+        # Time spinner (From)
+        self.from_time_spinner = self._create_time_spinner(from_dt_container, self.from_time_var)
+        self.from_time_spinner.grid(row=0, column=1, sticky="nsew")
 
-    def _create_time_spinner_new(self, parent, time_var):
-        outer = ctk.CTkFrame(
-            parent,
-            corner_radius=8,
-            border_width=1,
-            border_color="#e5e7eb",
+        # ---------------------------------------------------------
+        # Card 1,0: Date Time (To)
+        # ---------------------------------------------------------
+        to_card = self.filter_cells[1][0]
+        ctk.CTkLabel(
+            to_card, 
+            text="Date Time (To)", 
+            font=("Segoe UI", 11, "bold"),
+            text_color="#757575"
+        ).pack(anchor="w", padx=12, pady=(8, 2))
+        
+        to_dt_container = ctk.CTkFrame(to_card, fg_color="transparent")
+        to_dt_container.pack(fill="x", padx=10, pady=(2, 8))
+        to_dt_container.grid_columnconfigure(0, weight=3)
+        to_dt_container.grid_columnconfigure(1, weight=2)
+
+        # Date Entry Container (To)
+        to_date_container = ctk.CTkFrame(to_dt_container, fg_color="transparent")
+        to_date_container.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
+        
+        self.to_date_entry = ctk.CTkEntry(
+            to_date_container, 
+            textvariable=self.to_date_var,
+            placeholder_text="dd/mm/yyyy", 
+            height=30, 
+            corner_radius=6, 
+            border_color="#E0E0E0",
             fg_color="white",
-            height=38
+            text_color="#333333",
+            font=("Segoe UI", 12)
         )
-        outer.grid_columnconfigure(0, weight=1)
-        outer.grid_columnconfigure(1, weight=0)
-        outer.pack_propagate(False)
+        self.to_date_entry.pack(side="left", fill="x", expand=True)
         
-        display = ctk.CTkFrame(outer, corner_radius=0, border_width=0, fg_color="white")
-        display.grid(row=0, column=0, sticky="nsew", padx=(0, 3))
+        to_cal_btn = ctk.CTkLabel(
+            to_date_container, 
+            text="📅", 
+            font=("Segoe UI", 13), 
+            text_color="#2E7D32", 
+            cursor="hand2"
+        )
+        to_cal_btn.pack(side="right", padx=(4, 0))
+        if Calendar is not None:
+            self.to_date_entry.bind("<Button-1>", lambda e: self.open_calendar_popup(self.to_date_entry, self.to_date_var))
+            to_cal_btn.bind("<Button-1>", lambda e: self.open_calendar_popup(self.to_date_entry, self.to_date_var))
+
+        # Time spinner (To)
+        self.to_time_spinner = self._create_time_spinner(to_dt_container, self.to_time_var)
+        self.to_time_spinner.grid(row=0, column=1, sticky="nsew")
+
+        # ---------------------------------------------------------
+        # Card 0,1: Item
+        # ---------------------------------------------------------
+        item_card = self.filter_cells[0][1]
+        ctk.CTkLabel(
+            item_card, 
+            text="Item", 
+            font=("Segoe UI", 11, "bold"),
+            text_color="#757575"
+        ).pack(anchor="w", padx=12, pady=(8, 2))
+        self.item_combo = self._create_searchable_combobox(item_card, self.item_var, self._items_display_list())
+
+        # ---------------------------------------------------------
+        # Card 0,2: AirGauge ID
+        # ---------------------------------------------------------
+        ag_card = self.filter_cells[0][2]
+        ctk.CTkLabel(
+            ag_card, 
+            text="AirGauge ID", 
+            font=("Segoe UI", 11, "bold"),
+            text_color="#757575"
+        ).pack(anchor="w", padx=12, pady=(8, 2))
         
-        display.grid_columnconfigure(0, weight=1, uniform="time_col")
-        display.grid_columnconfigure(1, weight=0)
-        display.grid_columnconfigure(2, weight=1, uniform="time_col")
-        display.grid_columnconfigure(3, weight=0)
-        display.grid_columnconfigure(4, weight=1, uniform="time_col")
-        
-        def parse_time(s):
+        ag_container = ctk.CTkFrame(ag_card, fg_color="transparent")
+        ag_container.pack(fill="x", padx=10, pady=(2, 8))
+        ag_container.grid_columnconfigure(0, weight=1)
+        ag_container.grid_columnconfigure(1, weight=1)
+
+        # AirGauge ID combo
+        self.airgauge_combo = ttk.Combobox(
+            ag_container,
+            values=self._load_airgauge_ids(),
+            textvariable=self.airgauge_var,
+            width=8
+        )
+        self.airgauge_combo.grid(row=0, column=0, sticky="nsew", padx=(0, 4))
+        self.airgauge_combo._base_values = list(self.airgauge_combo["values"])
+
+        # Channel combo
+        self.channel_combo = ttk.Combobox(
+            ag_container,
+            values=["All"],
+            textvariable=self.channel_var,
+            width=8
+        )
+        self.channel_combo.grid(row=0, column=1, sticky="nsew")
+        self.channel_combo._base_values = ["All"]
+
+        # ---------------------------------------------------------
+        # Card 0,3: Drawing
+        # ---------------------------------------------------------
+        drawing_card = self.filter_cells[0][3]
+        ctk.CTkLabel(
+            drawing_card, 
+            text="Drawing", 
+            font=("Segoe UI", 11, "bold"),
+            text_color="#757575"
+        ).pack(anchor="w", padx=12, pady=(8, 2))
+        self.drawing_combo = self._create_searchable_combobox(drawing_card, self.drawing_var, ["All"])
+
+        # ---------------------------------------------------------
+        # Card 1,1: Operator
+        # ---------------------------------------------------------
+        operator_card = self.filter_cells[1][1]
+        ctk.CTkLabel(
+            operator_card, 
+            text="Operator", 
+            font=("Segoe UI", 11, "bold"),
+            text_color="#757575"
+        ).pack(anchor="w", padx=12, pady=(8, 2))
+        self.operator_combo = self._create_searchable_combobox(operator_card, self.operator_var, self._operators_display_list())
+
+        # ---------------------------------------------------------
+        # Card 1,2: Machine ID
+        # ---------------------------------------------------------
+        machine_card = self.filter_cells[1][2]
+        ctk.CTkLabel(
+            machine_card, 
+            text="Machine ID", 
+            font=("Segoe UI", 11, "bold"),
+            text_color="#757575"
+        ).pack(anchor="w", padx=12, pady=(8, 2))
+        self.machine_combo = self._create_searchable_combobox(machine_card, self.machine_var, self._machines_display_list())
+
+        # ---------------------------------------------------------
+        # Card 1,3: Customer
+        # ---------------------------------------------------------
+        customer_card = self.filter_cells[1][3]
+        ctk.CTkLabel(
+            customer_card, 
+            text="Customer", 
+            font=("Segoe UI", 11, "bold"),
+            text_color="#757575"
+        ).pack(anchor="w", padx=12, pady=(8, 2))
+        self.customer_combo = self._create_searchable_combobox(customer_card, self.customer_var, ["All"])
+
+    def _build_filter_grid(self):
+        """Compact two-row Report filter grid matching the requested layout."""
+        filter_container = ctk.CTkFrame(self, fg_color="transparent")
+        filter_container.pack(fill="x", padx=0, pady=(0, 8))
+
+        filter_frame = ctk.CTkFrame(filter_container, fg_color="transparent")
+        filter_frame.pack(fill="x", padx=0, pady=0)
+
+        for col, weight in enumerate((2, 1, 1, 1)):
+            filter_frame.grid_columnconfigure(col, weight=weight, uniform="report_filter")
+        filter_frame.grid_rowconfigure(0, weight=1)
+        filter_frame.grid_rowconfigure(1, weight=1)
+
+        def make_card(row, col, title):
+            card = ctk.CTkFrame(
+                filter_frame,
+                fg_color="white",
+                corner_radius=8,
+                border_width=1,
+                border_color="#E6E9ED",
+                height=78
+            )
+            card.grid(row=row, column=col, sticky="nsew", padx=3, pady=5)
+            card.grid_propagate(False)
+            ctk.CTkLabel(
+                card,
+                text=title,
+                font=("Segoe UI", 11, "bold"),
+                text_color="#202124",
+                anchor="w"
+            ).pack(anchor="w", padx=12, pady=(8, 3))
+            return card
+
+        def add_combo(card, tk_var, values):
+            combo = self._create_searchable_combobox(card, tk_var, values)
             try:
-                p = s.split(":")
-                hh = int(p[0]) if p and p[0] else 0
-                mm = int(p[1]) if len(p) > 1 and p[1] else 0
-                ss = int(p[2]) if len(p) > 2 and p[2] else 0
+                combo.configure(font=("Segoe UI", 11))
             except Exception:
-                hh, mm, ss = 0, 0, 0
-            hh %= 24; mm %= 60; ss %= 60
-            return hh, mm, ss
-            
-        hh_val, mm_val, ss_val = parse_time(time_var.get())
-        NORMAL_BG = "white"; SELECT_BG = "#7c3aed"; NORMAL_TEXT = "#374151"; SELECT_TEXT = "white"
-        LABEL_FONT = ("Segoe UI", 10, "bold"); COLON_FONT = ("Segoe UI", 10)
-        
-        hh_lbl = ctk.CTkLabel(display, text=f"{hh_val:02d}", font=LABEL_FONT, text_color=NORMAL_TEXT, fg_color=NORMAL_BG, corner_radius=6, anchor="center", width=32)
-        hh_lbl.grid(row=0, column=0, sticky="nsew", padx=1, pady=3)
-        
-        colon1 = ctk.CTkLabel(display, text=":", font=COLON_FONT, text_color=NORMAL_TEXT)
-        colon1.grid(row=0, column=1, sticky="nsew")
-        
-        mm_lbl = ctk.CTkLabel(display, text=f"{mm_val:02d}", font=LABEL_FONT, text_color=NORMAL_TEXT, fg_color=NORMAL_BG, corner_radius=6, anchor="center", width=32)
-        mm_lbl.grid(row=0, column=2, sticky="nsew", padx=1, pady=3)
-        
-        colon2 = ctk.CTkLabel(display, text=":", font=COLON_FONT, text_color=NORMAL_TEXT)
-        colon2.grid(row=0, column=3, sticky="nsew")
-        
-        ss_lbl = ctk.CTkLabel(display, text=f"{ss_val:02d}", font=LABEL_FONT, text_color=NORMAL_TEXT, fg_color=NORMAL_BG, corner_radius=6, anchor="center", width=32)
-        ss_lbl.grid(row=0, column=4, sticky="nsew", padx=1, pady=3)
-        
-        arrow_frame = ctk.CTkFrame(outer, corner_radius=0, border_width=0, fg_color="white")
-        arrow_frame.grid(row=0, column=1, sticky="ns")
-        
-        up_btn = ModernButton(
-            arrow_frame,
-            text="▲",
-            width=20,
-            height=12,
-            fg_color="#ffffff",
-            text_color="#8b5cf6",
-            hover_color="#f5f7fb",
-            hover=False,
-            corner_radius=4,
-            command=lambda: change_value(1),
-            takefocus=False
+                pass
+            return combo
+
+        def add_date_time(card, date_var, time_var):
+            body = ctk.CTkFrame(card, fg_color="transparent")
+            body.pack(fill="x", padx=10, pady=(0, 8))
+            body.grid_columnconfigure(0, weight=3)
+            body.grid_columnconfigure(1, weight=2)
+
+            date_wrap = ctk.CTkFrame(body, fg_color="transparent")
+            date_wrap.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
+            entry = ctk.CTkEntry(
+                date_wrap,
+                textvariable=date_var,
+                placeholder_text="dd/mm/yyyy",
+                height=30,
+                corner_radius=6,
+                border_width=1,
+                border_color="#D8E3DC",
+                fg_color="white",
+                text_color="#333333",
+                font=("Segoe UI", 11),
+                state="readonly"
+            )
+            entry.pack(side="left", fill="x", expand=True)
+
+            cal_btn = ctk.CTkLabel(
+                date_wrap,
+                text="\U0001F4C5",
+                font=("Segoe UI", 13),
+                text_color="#008A4D",
+                cursor="hand2",
+                width=18
+            )
+            cal_btn.pack(side="right", padx=(4, 0))
+            if Calendar is not None:
+                entry.bind("<Button-1>", lambda e: self.open_calendar_popup(entry, date_var))
+                cal_btn.bind("<Button-1>", lambda e: self.open_calendar_popup(entry, date_var))
+
+            spinner = self._create_time_spinner(body, time_var)
+            spinner.grid(row=0, column=1, sticky="nsew")
+            return entry, spinner
+
+        from_card = make_card(0, 0, "Date Time (From)")
+        self.from_date_entry, self.from_time_spinner = add_date_time(from_card, self.from_date_var, self.from_time_var)
+
+        item_card = make_card(0, 1, "Item")
+        self.item_combo = add_combo(item_card, self.item_var, self._items_display_list())
+
+        ag_card = make_card(0, 2, "AirGauge ID")
+        ag_body = ctk.CTkFrame(ag_card, fg_color="transparent")
+        ag_body.pack(fill="x", padx=10, pady=(0, 8))
+        ag_body.grid_columnconfigure(0, weight=1)
+        ag_body.grid_columnconfigure(1, weight=1)
+        self.airgauge_combo = ttk.Combobox(
+            ag_body,
+            values=self._load_airgauge_ids(),
+            textvariable=self.airgauge_var,
+            font=("Segoe UI", 11)
         )
-        up_btn.pack(side="top", padx=0, pady=(2, 2))
-        
-        down_btn = ModernButton(
-            arrow_frame,
-            text="▼",
-            width=20,
-            height=12,
-            fg_color="#ffffff",
-            text_color="#8b5cf6",
-            hover_color="#f5f7fb",
-            hover=False,
-            corner_radius=4,
-            command=lambda: change_value(-1),
-            takefocus=False
+        self.airgauge_combo.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        self.airgauge_combo._base_values = list(self.airgauge_combo["values"])
+        self.channel_combo = ttk.Combobox(
+            ag_body,
+            values=["All"],
+            textvariable=self.channel_var,
+            font=("Segoe UI", 11)
         )
-        down_btn.pack(side="top", padx=0, pady=(0, 2))
-        
-        selected = {"field": "hour"}
-        typed_buffer = []
-        
-        def update_visual():
-            hh_lbl.configure(fg_color=NORMAL_BG, text_color=NORMAL_TEXT)
-            mm_lbl.configure(fg_color=NORMAL_BG, text_color=NORMAL_TEXT)
-            ss_lbl.configure(fg_color=NORMAL_BG, text_color=NORMAL_TEXT)
-            
-            if selected["field"] == "hour":
-                hh_lbl.configure(fg_color=SELECT_BG, text_color=SELECT_TEXT)
-            elif selected["field"] == "minute":
-                mm_lbl.configure(fg_color=SELECT_BG, text_color=SELECT_TEXT)
-            else:
-                ss_lbl.configure(fg_color=SELECT_BG, text_color=SELECT_TEXT)
+        self.channel_combo.grid(row=0, column=1, sticky="nsew")
+        self.channel_combo._base_values = ["All"]
 
-        def select_field(f):
-            selected["field"] = f
-            typed_buffer.clear()
-            update_visual()
-            outer.configure(border_color="#7c3aed")
-            try:
-                root = outer.winfo_toplevel()
-                root.focus_set()
-            except:
-                pass
-            
-        hh_lbl.bind("<Button-1>", lambda e: select_field("hour"))
-        mm_lbl.bind("<Button-1>", lambda e: select_field("minute"))
-        ss_lbl.bind("<Button-1>", lambda e: select_field("second"))
-        
-        def write_time(h, m, s):
-            hh_lbl.configure(text=f"{h:02d}")
-            mm_lbl.configure(text=f"{m:02d}")
-            ss_lbl.configure(text=f"{s:02d}")
-            time_var.set(f"{h:02d}:{m:02d}:{s:02d}")
-            self._schedule_filter()
+        drawing_card = make_card(0, 3, "Drawing")
+        self.drawing_combo = add_combo(drawing_card, self.drawing_var, ["All"])
 
-        def change_value(delta):
-            nonlocal hh_val, mm_val, ss_val
-            typed_buffer.clear()
-            if selected["field"] == "hour":
-                hh_val = (hh_val + delta) % 24
-            elif selected["field"] == "minute":
-                mm_val = (mm_val + delta) % 60
-            else:
-                ss_val = (ss_val + delta) % 60
-            write_time(hh_val, mm_val, ss_val)
+        to_card = make_card(1, 0, "Date Time (To)")
+        self.to_date_entry, self.to_time_spinner = add_date_time(to_card, self.to_date_var, self.to_time_var)
 
-        def on_wheel(e):
-            d = 1 if (e.delta > 0) else -1
-            change_value(d)
-        
-        for w in [outer, hh_lbl, mm_lbl, ss_lbl, up_btn, down_btn, arrow_frame, colon1, colon2]:
-            try:
-                w.bind("<MouseWheel>", on_wheel)
-            except:
-                pass
+        operator_card = make_card(1, 1, "Operator")
+        self.operator_combo = add_combo(operator_card, self.operator_var, self._operators_display_list())
 
-        def is_typing_elsewhere():
-            try:
-                root = outer.winfo_toplevel()
-                focused = root.focus_get()
-                if focused:
-                    cls = focused.winfo_class()
-                    if cls in ("Entry", "Text", "TEntry", "TCombobox", "Listbox"):
-                        return True
-            except:
-                pass
-            return False
+        machine_card = make_card(1, 2, "Machine ID")
+        self.machine_combo = add_combo(machine_card, self.machine_var, self._machines_display_list())
 
-        def handle_digit(digit):
-            if is_typing_elsewhere():
-                return
-            nonlocal hh_val, mm_val, ss_val
-            val = int(digit)
-            
-            if len(typed_buffer) >= 2:
-                typed_buffer.clear()
-            typed_buffer.append(digit)
-            
-            if len(typed_buffer) == 1:
-                limit = 3 if selected["field"] == "hour" else 6
-                if val >= limit:
-                    if selected["field"] == "hour":
-                        hh_val = val
-                        write_time(hh_val, mm_val, ss_val)
-                        select_field("minute")
-                    elif selected["field"] == "minute":
-                        mm_val = val
-                        write_time(hh_val, mm_val, ss_val)
-                        select_field("second")
-                    else:
-                        ss_val = val
-                        write_time(hh_val, mm_val, ss_val)
-                    typed_buffer.clear()
-                else:
-                    if selected["field"] == "hour":
-                        hh_val = val
-                    elif selected["field"] == "minute":
-                        mm_val = val
-                    else:
-                        ss_val = val
-                    write_time(hh_val, mm_val, ss_val)
-            else:
-                first = typed_buffer[0]
-                combined = int(first + digit)
-                
-                if selected["field"] == "hour":
-                    if combined > 23:
-                        combined = 23
-                    hh_val = combined
-                    write_time(hh_val, mm_val, ss_val)
-                    select_field("minute")
-                elif selected["field"] == "minute":
-                    if combined > 59:
-                        combined = 59
-                    mm_val = combined
-                    write_time(hh_val, mm_val, ss_val)
-                    select_field("second")
-                else:
-                    if combined > 59:
-                        combined = 59
-                    ss_val = combined
-                    write_time(hh_val, mm_val, ss_val)
-                typed_buffer.clear()
+        customer_card = make_card(1, 3, "Customer")
+        self.customer_combo = add_combo(customer_card, self.customer_var, ["All"])
 
-        def handle_backspace():
-            if is_typing_elsewhere():
-                return
-            nonlocal hh_val, mm_val, ss_val
-            if selected["field"] == "hour":
-                hh_val = 0
-            elif selected["field"] == "minute":
-                mm_val = 0
-            else:
-                ss_val = 0
-            typed_buffer.clear()
-            write_time(hh_val, mm_val, ss_val)
-
-        def navigate_fields(direction):
-            if is_typing_elsewhere():
-                return
-            if direction == -1:
-                if selected["field"] == "second":
-                    select_field("minute")
-                elif selected["field"] == "minute":
-                    select_field("hour")
-            else:
-                if selected["field"] == "hour":
-                    select_field("minute")
-                elif selected["field"] == "minute":
-                    select_field("second")
-
-        def change_value_key(direction):
-            if is_typing_elsewhere():
-                return
-            change_value(direction)
-
-        def on_enter(e):
-            try:
-                root = outer.winfo_toplevel()
-                root.bind("<Up>", lambda ev: change_value_key(1))
-                root.bind("<Down>", lambda ev: change_value_key(-1))
-                root.bind("<Left>", lambda ev: navigate_fields(-1))
-                root.bind("<Right>", lambda ev: navigate_fields(1))
-                root.bind("<BackSpace>", lambda ev: handle_backspace())
-                for digit in "0123456789":
-                    root.bind(digit, lambda ev, d=digit: handle_digit(d))
-            except:
-                pass
-
-        def on_leave(e):
-            outer.configure(border_color="#e5e7eb")
-            try:
-                root = outer.winfo_toplevel()
-                root.unbind("<Up>")
-                root.unbind("<Down>")
-                root.unbind("<Left>")
-                root.unbind("<Right>")
-                root.unbind("<BackSpace>")
-                for digit in "0123456789":
-                    root.unbind(digit)
-            except:
-                pass
-
-        outer.bind("<Enter>", on_enter)
-        outer.bind("<Leave>", on_leave)
-        
-        select_field("hour")
-        write_time(hh_val, mm_val, ss_val)
-        return outer
-
-    def _create_searchable_combobox_new(self, parent_cell, tk_var, options_list, pack=True):
-        combo = ctk.CTkComboBox(
-            parent_cell,
-            values=options_list,
-            variable=tk_var,
-            height=38,
-            corner_radius=8,
-            border_width=1,
-            border_color="#e5e7eb",
-            fg_color="#ffffff",
-            button_color="#ffffff",
-            button_hover_color="#f9fafb",
-            dropdown_fg_color="#ffffff",
-            dropdown_hover_color="#f5f3ff",
-            dropdown_text_color="#374151",
-            text_color="#374151",
-            font=("Segoe UI", 11),
-            dropdown_font=("Segoe UI", 11)
-        )
-        if pack:
-            combo.pack(fill="x", padx=0, pady=(0, 0))
-
+    # ---------------------------
+    # Searchable combobox helper
+    # ---------------------------
+    def _create_searchable_combobox(self, parent_cell, tk_var, options_list):
+        frm = ctk.CTkFrame(parent_cell, fg_color="transparent")
+        frm.pack(fill="x", padx=10, pady=(2, 8))
+        combo = ttk.Combobox(frm, values=options_list, textvariable=tk_var)
+        combo.pack(fill="x", expand=True)
+        combo.config(state="normal")
         combo._base_values = list(options_list)
-
         def on_keyrelease(e):
             typed = combo.get().strip().lower()
             if typed:
@@ -14369,20 +14224,16 @@ class ReportPage(ctk.CTkFrame):
             if "All" not in filtered:
                 filtered = ["All"] + filtered
             try:
-                combo.configure(values=filtered)
+                combo['values'] = filtered
             except Exception:
                 pass
-
         def on_select(event=None):
             val = combo.get().strip() or "All"
             tk_var.set(val)
             self._schedule_filter()
-
-        if hasattr(combo, "_entry") and combo._entry:
-            combo._entry.bind("<KeyRelease>", on_keyrelease)
-            combo._entry.bind("<FocusIn>", lambda e: combo.configure(border_color="#7c3aed"))
-            combo._entry.bind("<FocusOut>", lambda e: [combo.configure(border_color="#e5e7eb"), on_select()])
-
+        combo.bind("<KeyRelease>", on_keyrelease)
+        combo.bind("<<ComboboxSelected>>", on_select)
+        combo.bind("<FocusOut>", lambda e: on_select())
         return combo
 
     def _items_display_list(self):
@@ -14400,10 +14251,7 @@ class ReportPage(ctk.CTkFrame):
         channels = self._load_channels_for_airgauge(ag)
 
         self.channel_combo._base_values = channels
-        if hasattr(self.channel_combo, "configure"):
-            self.channel_combo.configure(values=channels)
-        else:
-            self.channel_combo["values"] = channels
+        self.channel_combo["values"] = channels
 
         if self.channel_var.get() not in channels:
             self.channel_var.set("All")
@@ -14441,6 +14289,8 @@ class ReportPage(ctk.CTkFrame):
             customers = set()
 
             for row, _, _ in data_list:
+                # row structure:
+                # 6: AirGauge, 7: Channel, 8: Drawing, 9: User/Op, 11: Item, 12: Machine, 13: Customer
                 if len(row) > 11 and row[11]: items.add(str(row[11]).strip())
                 if len(row) > 9 and row[9]: operators.add(str(row[9]).strip())
                 if len(row) > 12 and row[12]: machines.add(str(row[12]).strip())
@@ -14455,10 +14305,7 @@ class ReportPage(ctk.CTkFrame):
                 current = var.get()
                 sorted_vals = ["All"] + sorted(list(new_vals))
                 combo._base_values = sorted_vals
-                if hasattr(combo, "configure"):
-                    combo.configure(values=sorted_vals)
-                else:
-                    combo["values"] = sorted_vals
+                combo["values"] = sorted_vals
                 if current not in sorted_vals:
                     var.set("All")
 
@@ -14881,16 +14728,16 @@ class ReportPage(ctk.CTkFrame):
         sub_lbl.pack()
 
     def _build_table_area(self):
-        # Table Container Card
+        """Compact Report table with a custom green icon header strip."""
         table_frame = ctk.CTkFrame(
             self,
-            fg_color="#ffffff",
-            corner_radius=12,
+            fg_color="white",
+            corner_radius=8,
             border_width=1,
-            border_color="#e5e7eb"
+            border_color="#E6E9ED"
         )
-        table_frame.pack(fill="both", expand=True, padx=24, pady=(6, 20))
-        table_frame.grid_rowconfigure(3, weight=1) # Row 3 is sheet_holder
+        table_frame.pack(fill="both", expand=True, padx=0, pady=(4, 12))
+        table_frame.grid_rowconfigure(2, weight=1)
         table_frame.grid_columnconfigure(0, weight=1)
 
         cols = (
@@ -14917,17 +14764,8 @@ class ReportPage(ctk.CTkFrame):
             ("Customer", "\U0001F465"),
         ]
 
-        # Results Section title (small uppercase text)
-        self.results_title_lbl = ctk.CTkLabel(
-            table_frame,
-            text="RESULTS SHOWCASE",
-            font=("Segoe UI", 10, "bold"),
-            text_color="#9ca3af"
-        )
-        self.results_title_lbl.grid(row=0, column=0, sticky="w", padx=20, pady=(15, 8))
-
         self.report_header_frame = ctk.CTkFrame(table_frame, fg_color="white", height=42, corner_radius=0)
-        self.report_header_frame.grid(row=1, column=0, sticky="ew", padx=0, pady=(0, 0))
+        self.report_header_frame.grid(row=0, column=0, sticky="ew", padx=0, pady=(0, 0))
         self.report_header_frame.grid_propagate(False)
 
         self.report_header_canvas = tk.Canvas(self.report_header_frame, bg="white", highlightthickness=0, height=42)
@@ -14944,6 +14782,7 @@ class ReportPage(ctk.CTkFrame):
         ).pack(side="right", fill="y")
 
         self.report_header_widgets = []
+        # Centered text-only header cells, no icon, normal weight font
         for i, (name, _) in enumerate(header_info):
             cell = tk.Frame(
                 self.report_header_inner,
@@ -14956,23 +14795,23 @@ class ReportPage(ctk.CTkFrame):
             tk.Label(
                 cell,
                 text=name,
-                font=("Segoe UI", 10, "bold"),
-                fg="#374151",
+                font=("Segoe UI", 9),
+                fg="#1A1A1A",
                 bg="white",
                 anchor="center",
                 justify="center"
             ).place(relx=0.5, rely=0.5, anchor="center")
 
             if i < len(header_info) - 1:
-                sep = tk.Frame(cell, bg="#eef2ff", width=1)
+                sep = tk.Frame(cell, bg="#E6E9ED", width=1)
                 sep.pack(side="right", fill="y")
 
             self.report_header_widgets.append(cell)
 
-        ctk.CTkFrame(table_frame, fg_color="#e5e7eb", height=1, corner_radius=0).grid(row=2, column=0, sticky="ew")
+        ctk.CTkFrame(table_frame, fg_color="#E6E9ED", height=1, corner_radius=0).grid(row=1, column=0, sticky="ew")
 
         sheet_holder = ctk.CTkFrame(table_frame, fg_color="white", corner_radius=0)
-        sheet_holder.grid(row=3, column=0, sticky="nsew", padx=0, pady=0)
+        sheet_holder.grid(row=2, column=0, sticky="nsew", padx=0, pady=0)
         sheet_holder.grid_rowconfigure(0, weight=1)
         sheet_holder.grid_columnconfigure(0, weight=1)
 
@@ -15036,31 +14875,14 @@ class ReportPage(ctk.CTkFrame):
                 show_row_index=False,
                 show_x_scrollbar=True,
                 show_y_scrollbar=True,
-                height=500,
-                row_height=45
+                height=500
             )
             self.sheet.grid(row=0, column=0, sticky="nsew")
             try:
                 self.sheet.set_options(auto_resize_columns=False)
                 self.sheet.set_options(column_width_resize=False)
-                self.sheet.set_options(
-                    header_bg="#f9fafb",
-                    header_background="#f9fafb",
-                    header_fg="#374151",
-                    header_foreground="#374151",
-                    header_font=("Segoe UI", 11, "bold"),
-                    font=("Segoe UI", 10, "normal"),
-                    table_bg="#ffffff",
-                    table_background="#ffffff",
-                    table_grid_color="#f3f4f6",
-                    header_grid_color="#e5e7eb",
-                    table_bg_even="#ffffff",
-                    table_bg_odd="#f9fafb",
-                    table_selected_rows_bg="#ede9fe",
-                    table_selected_rows_fg="#5b21b6"
-                )
-            except Exception as e:
-                print("tksheet configuration error:", e)
+            except Exception:
+                pass
             try:
                 self.sheet.enable_bindings(("single_select", "row_select", "arrowkeys", "copy", "select_all", "right_click_popup_menu"))
             except Exception:
@@ -15081,28 +14903,10 @@ class ReportPage(ctk.CTkFrame):
             except Exception as e:
                 print("Failed to sync Report header scrollbar:", e)
         else:
-            style = ttk.Style()
-            style.configure("Report.Treeview",
-                            background="#ffffff",
-                            foreground="#374151",
-                            fieldbackground="#ffffff",
-                            rowheight=45,
-                            font=("Segoe UI", 10))
-            style.configure("Report.Treeview.Heading",
-                            background="#f9fafb",
-                            foreground="#374151",
-                            font=("Segoe UI", 11, "bold"))
-            style.map("Report.Treeview.Heading", background=[('active', '#f9fafb')])
-
-            self.tree = ttk.Treeview(sheet_holder, columns=cols, show="headings", selectmode="browse", style="Report.Treeview")
+            self.tree = ttk.Treeview(sheet_holder, columns=cols, show="headings", selectmode="browse")
             for h in cols:
                 self.tree.heading(h, text="")
                 self.tree.column(h, width=90, anchor="center")
-            
-            # Treeview status tags colors
-            self.tree.tag_configure("pass_row", background="#dcfce7", foreground="#16a34a")
-            self.tree.tag_configure("fail_row", background="#fee2e2", foreground="#dc2626")
-
             vsb = ttk.Scrollbar(sheet_holder, orient="vertical", command=self.tree.yview)
             hsb = ttk.Scrollbar(sheet_holder, orient="horizontal", command=self.tree.xview)
             self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
@@ -15114,71 +14918,29 @@ class ReportPage(ctk.CTkFrame):
         sheet_holder.bind("<Configure>", self._apply_report_widths)
         self.after(100, self._apply_report_widths)
 
-        self.empty_state_frame = ctk.CTkFrame(sheet_holder, fg_color="white", corner_radius=12)
+        self.empty_state_frame = ctk.CTkFrame(sheet_holder, fg_color="white", corner_radius=8)
         center_content = ctk.CTkFrame(self.empty_state_frame, fg_color="transparent")
         center_content.place(relx=0.5, rely=0.5, anchor="center")
-        
-        icon_lbl = ctk.CTkLabel(
+        ctk.CTkLabel(
             center_content,
-            text="📥",
-            font=("Segoe UI", 48),
-            text_color="#94a3b8"
-        )
-        icon_lbl.pack(pady=(0, 10))
-
-        msg_lbl = ctk.CTkLabel(
+            text="No data available",
+            font=("Segoe UI", 13, "bold"),
+            text_color="#333333"
+        ).pack(pady=(0, 4))
+        ctk.CTkLabel(
             center_content,
-            text="No Data Available",
-            font=("Segoe UI", 15, "bold"),
-            text_color="#111827"
-        )
-        msg_lbl.pack(pady=(0, 4))
-
-        sub_lbl = ctk.CTkLabel(
-            center_content,
-            text="Please select filters and click Analyze Data to view records.",
-            font=("Segoe UI", 11),
-            text_color="#6b7280"
-        )
-        sub_lbl.pack()
-
-    def _style_table_status_cells(self):
-        if not self.use_tksheet or not self.sheet:
-            return
-        try:
-            self.sheet.dehighlight_cells(column=5)
-        except Exception:
-            pass
-            
-        try:
-            data = self.sheet.get_sheet_data()
-            for r_idx, row in enumerate(data):
-                if len(row) > 5:
-                    status = str(row[5]).upper()
-                    if "PASS" in status or "ACCEPTED" in status or status == "A":
-                        self.sheet.highlight_cells(
-                            row=r_idx,
-                            column=5,
-                            bg="#dcfce7",
-                            fg="#16a34a"
-                        )
-                    elif "FAIL" in status or "REJECTED" in status or "REWORK" in status or status == "B" or status == "C":
-                        self.sheet.highlight_cells(
-                            row=r_idx,
-                            column=5,
-                            bg="#fee2e2",
-                            fg="#dc2626"
-                        )
-        except Exception as e:
-            print("Status column styling error:", e)
+            text="Please select filters and click Analyze to view data.",
+            font=("Segoe UI", 10),
+            text_color="#757575"
+        ).pack()
 
     # ---------------------------
     # Loading overlay
     # ---------------------------
     def _create_loading_overlay(self):
-        self._overlay = ctk.CTkFrame(self, fg_color="#ffffff", corner_radius=20)
+        self._overlay = ctk.CTkFrame(self, fg_color="#000000", corner_radius=0)
         self._overlay.place_forget()
-        self._overlay_label = tk.Label(self._overlay, text="Loading data…", font=("Segoe UI", 13, "bold"), bg="#ffffff", fg="#111827")
+        self._overlay_label = tk.Label(self._overlay, text="Loading data…", font=("Segoe UI", 13, "bold"), bg="#000000", fg="white")
         self._overlay_label.pack(pady=(20,10))
         self._overlay_pb = ttk.Progressbar(self._overlay, mode="indeterminate", length=240)
         self._overlay_pb.pack(pady=(0,20))
@@ -15383,19 +15145,12 @@ class ReportPage(ctk.CTkFrame):
         try:
             if self.use_tksheet and self.sheet:
                 self.sheet.set_sheet_data(table_rows)
-                self._style_table_status_cells()
                 self.sheet.refresh()
             else:
                 for r in self.tree.get_children():
                     self.tree.delete(r)
                 for rrow in table_rows:
-                    status = str(rrow[5]).upper() if len(rrow) > 5 else ""
-                    if "PASS" in status or "ACCEPTED" in status or status == "A":
-                        self.tree.insert("", "end", values=rrow, tags=("pass_row",))
-                    elif "FAIL" in status or "REJECTED" in status or "REWORK" in status or status == "B" or status == "C":
-                        self.tree.insert("", "end", values=rrow, tags=("fail_row",))
-                    else:
-                        self.tree.insert("", "end", values=rrow)
+                    self.tree.insert("", "end", values=rrow)
         except Exception:
             pass
 
@@ -15718,19 +15473,11 @@ class ReportPage(ctk.CTkFrame):
 
             if self.use_tksheet and self.sheet:
                 self.sheet.set_sheet_data(table_rows)
-                self._style_table_status_cells()
                 try: self.sheet.refresh()
                 except: pass
             else:
                 for iid in self.tree.get_children(): self.tree.delete(iid)
-                for rrow in table_rows:
-                    status = str(rrow[5]).upper() if len(rrow) > 5 else ""
-                    if "PASS" in status or "ACCEPTED" in status or status == "A":
-                        self.tree.insert("", "end", values=rrow, tags=("pass_row",))
-                    elif "FAIL" in status or "REJECTED" in status or "REWORK" in status or status == "B" or status == "C":
-                        self.tree.insert("", "end", values=rrow, tags=("fail_row",))
-                    else:
-                        self.tree.insert("", "end", values=rrow)
+                for rrow in table_rows: self.tree.insert("", "end", values=rrow)
             self._update_empty_state(len(table_rows))
         except Exception:
             pass
@@ -15964,19 +15711,11 @@ class ReportPage(ctk.CTkFrame):
         try:
             if self.use_tksheet and self.sheet:
                 self.sheet.set_sheet_data(table_rows)
-                self._style_table_status_cells()
                 try: self.sheet.refresh()
                 except: pass
             else:
                 for iid in self.tree.get_children(): self.tree.delete(iid)
-                for rrow in table_rows:
-                    status = str(rrow[5]).upper() if len(rrow) > 5 else ""
-                    if "PASS" in status or "ACCEPTED" in status or status == "A":
-                        self.tree.insert("", "end", values=rrow, tags=("pass_row",))
-                    elif "FAIL" in status or "REJECTED" in status or "REWORK" in status or status == "B" or status == "C":
-                        self.tree.insert("", "end", values=rrow, tags=("fail_row",))
-                    else:
-                        self.tree.insert("", "end", values=rrow)
+                for rrow in table_rows: self.tree.insert("", "end", values=rrow)
             self._update_empty_state(len(table_rows))
         except Exception:
             pass
@@ -15991,21 +15730,14 @@ class ReportPage(ctk.CTkFrame):
     # ---------------------------
     def reload_filter_files(self):
         self._load_filter_data_files()
-        
-        def safe_update_combo(combo, values):
-            try:
-                combo._base_values = list(values)
-                if hasattr(combo, "configure"):
-                    combo.configure(values=values)
-                else:
-                    combo['values'] = values
-            except Exception as e:
-                print("Combo update error:", e)
-
-        safe_update_combo(self.item_combo, self._items_display_list())
-        safe_update_combo(self.operator_combo, self._operators_display_list())
-        safe_update_combo(self.machine_combo, self._machines_display_list())
-        safe_update_combo(self.airgauge_combo, self._load_airgauge_ids())
+        try:
+            self.item_combo._base_values = self._items_display_list(); self.item_combo['values'] = self.item_combo._base_values
+            self.operator_combo._base_values = self._operators_display_list(); self.operator_combo['values'] = self.operator_combo._base_values
+            self.machine_combo._base_values = self._machines_display_list(); self.machine_combo['values'] = self.machine_combo._base_values
+            vals = self._load_airgauge_ids()
+            self.airgauge_combo._base_values = vals; self.airgauge_combo['values'] = vals
+        except Exception:
+            pass
 
 
         

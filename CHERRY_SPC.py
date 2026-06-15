@@ -595,7 +595,6 @@ class LicenseVerificationPage(ctk.CTkFrame):
                 fill=col, outline="", tags="shadow"
             )
 
-        # ── Main Card ─────────────────────────────────────────────────────
         self.card = ctk.CTkFrame(
             self,
             fg_color="white",
@@ -606,6 +605,15 @@ class LicenseVerificationPage(ctk.CTkFrame):
         self.card.place(relx=0.5, rely=0.5, anchor="center")
         self.card.pack_propagate(False)
         self.card.lift()
+
+        # ── Back Button ──────────────────────────────────────────────────────────
+        self.back_btn = ModernButton(
+            self.card, text="⬅ Back",
+            font=("Segoe UI", 11, "bold"), height=28, width=70,
+            fg_color="#F0F4F0", hover_color="#E2E8E2", text_color="#1B5E20",
+            corner_radius=6, command=self.go_back
+        )
+        self.back_btn.place(x=15, y=15)
 
         # ── Logo ──────────────────────────────────────────────────────────
         try:
@@ -640,16 +648,7 @@ class LicenseVerificationPage(ctk.CTkFrame):
             outline="#AAAAAA", width=2, dash=(5, 4)
         )
 
-        # Upload-tray icon via PIL → PhotoImage on canvas
-        try:
-            from PIL import ImageTk as _ITK
-            _icon_pil = LicenseVerificationPage._make_cloud_icon(
-                size=64, color="#1A1A1A", bg="#F8FAFB")
-            self._cloud_photo = _ITK.PhotoImage(_icon_pil)
-            self._dz_canvas.create_image(dz_w // 2, 52, image=self._cloud_photo)
-        except Exception as _ce:
-            self._dz_canvas.create_text(dz_w // 2, 46, text="⬆",
-                                         font=("Segoe UI", 36), fill="#555")
+        # Removed cloud icon as requested
 
         # "Drag & drop" label
         self._dz_canvas.create_text(
@@ -748,47 +747,9 @@ class LicenseVerificationPage(ctk.CTkFrame):
             except Exception as e:
                 self.error_label.configure(text=f"Error reading file: {str(e)}")
 
-    @staticmethod
-    def _make_cloud_icon(size=64, color="#1A1A1A", bg="#F8FAFB"):
-        """Draw an upload-tray icon (arrow + tray base) matching the reference UI."""
-        from PIL import Image, ImageDraw
-        ic = tuple(int(color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)) + (255,)
-        img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
-        lw = max(2, round(size / 20))
-        s   = float(size)
-        cx  = size // 2
-
-        # ─ Upward arrow ─
-        tip_y      = int(0.05 * s)   # very top of arrowhead
-        head_half  = int(0.18 * s)   # half-width of arrowhead base
-        shaft_top  = tip_y + head_half
-        shaft_btm  = int(0.55 * s)   # where shaft meets the tray
-
-        # Filled arrowhead triangle
-        draw.polygon([
-            (cx,            tip_y),
-            (cx - head_half, shaft_top),
-            (cx + head_half, shaft_top),
-        ], fill=ic)
-
-        # Arrow shaft
-        draw.line([cx, shaft_top, cx, shaft_btm], fill=ic, width=lw)
-
-        # ─ Tray base ─
-        tray_arm_w = int(0.38 * s)   # how far arms spread sideways from center
-        tray_top_y = int(0.55 * s)   # top of tray (= shaft bottom)
-        tray_btm_y = int(0.82 * s)   # bottom bar y
-
-        # Left arm: diagonal from shaft-bottom going down-left
-        draw.line([cx, tray_top_y, cx - tray_arm_w, tray_btm_y], fill=ic, width=lw)
-        # Right arm: diagonal from shaft-bottom going down-right
-        draw.line([cx, tray_top_y, cx + tray_arm_w, tray_btm_y], fill=ic, width=lw)
-        # Horizontal base bar
-        draw.line([cx - tray_arm_w, tray_btm_y, cx + tray_arm_w, tray_btm_y],
-                  fill=ic, width=lw)
-
-        return img
+    def go_back(self):
+        """Go back to the installer login page."""
+        self.controller.show_installer_login()
 
 
 def bezier_curve(p0, p1, p2, p3, num_points=100):
@@ -2303,62 +2264,120 @@ class OrganizationSetupPage(ctk.CTkFrame):
         super().__init__(parent)
         self.controller = controller
         
-        # Background
-        self.configure(fg_color="#F5F7FA") # Light nice background
-        
-        # Main Container - Split Card Style
-        self.main_card = ctk.CTkFrame(self, fg_color="white", corner_radius=20, width=1000, height=600)
-        self.main_card.place(relx=0.5, rely=0.5, anchor="center")
-        self.main_card.pack_propagate(False)
+        # ── Background ────────────────────────────────────────────────────
+        self.configure(fg_color="#F0F2F5")
 
-        # --- LEFT SIDE: INFO PANEL ---
-        self.left_panel = ctk.CTkFrame(self.main_card, fg_color="#1565C0", corner_radius=20, width=400, height=600)
-        self.left_panel.place(x=0, y=0)
-        self.left_panel.pack_propagate(False)
+        # ── Shadow layer ──────────────────────────────────────────────────
+        self._shadow_canvas = tk.Canvas(self, bg="#F0F2F5", highlightthickness=0,
+                                        width=420, height=550)
+        self._shadow_canvas.place(relx=0.5, rely=0.5, anchor="center")
+
+        _shadow_colors = ["#CBCDD4", "#D3D5DC", "#DBDDE4", "#E3E5EB", "#EBECF0"]
+        for i, col in enumerate(_shadow_colors):
+            pad = i * 2
+            off = 5 - i
+            self._shadow_canvas.create_rectangle(
+                10 + pad + off, 12 + pad + off,
+                410 - pad + off, 542 - pad + off,
+                fill=col, outline="", tags="shadow"
+            )
+
+        # ── Main Card ─────────────────────────────────────────────────────
+        self.card = ctk.CTkFrame(
+            self, fg_color="white", corner_radius=28,
+            width=400, height=530
+        )
+        self.card.place(relx=0.5, rely=0.5, anchor="center")
+        self.card.pack_propagate(False)
+        self.card.lift()
+
+        # ── Back Button ──────────────────────────────────────────────────────────
+        self.back_btn = ModernButton(
+            self.card, text="⬅ Back",
+            font=("Segoe UI", 11, "bold"), height=28, width=70,
+            fg_color="#F0F4F0", hover_color="#E2E8E2", text_color="#1B5E20",
+            corner_radius=6, command=self.go_back
+        )
+        self.back_btn.place(x=15, y=15)
         
-        # Load cherry logo image
+        # ── Logo ──────────────────────────────────────────────────────────
         try:
             logo_path = resource_path("settings/cherry_signup_logo.png")
             if os.path.exists(logo_path):
                 pil_img = Image.open(logo_path)
-                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(180, 86))
-                logo_lbl = ctk.CTkLabel(self.left_panel, text="", image=self.cherry_logo_img, fg_color="transparent")
-                logo_lbl.place(relx=0.5, rely=0.15, anchor="center")
+                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(200, 62))
+                logo_lbl = ctk.CTkLabel(self.card, text="", image=self.cherry_logo_img, fg_color="transparent")
+                logo_lbl.pack(pady=(38, 6))
         except Exception as e:
             print("Error loading setup cherry logo:", e)
         
-        # Content Left
-        ctk.CTkLabel(self.left_panel, text="Setup Wizard", 
-                     font=("Segoe UI", 24, "bold"), text_color="white").place(relx=0.5, rely=0.30, anchor="center")
-        
-        ctk.CTkLabel(self.left_panel, text="Step 1: Organization", 
-                     font=("Segoe UI", 18, "bold"), text_color="#BBDEFB").place(relx=0.5, rely=0.38, anchor="center")
-        
-        info_text = ("Welcome to your Air Gauge System.\n\n"
-                     "Please provide the company details.\n\n"
-                     "These settings can be changed later\n"
-                     "in the application settings.")
-        
-        ctk.CTkLabel(self.left_panel, text=info_text, 
-                     font=("Segoe UI", 13), text_color="#E3F2FD", justify="center").place(relx=0.5, rely=0.58, anchor="center")
+        # ── Title ─────────────────────────────────────────────────────────
+        ctk.CTkLabel(self.card, text="Organization Details", 
+                     font=("Segoe UI", 20, "bold"), text_color="#1A1A1A").pack(pady=(4, 2))
+        ctk.CTkLabel(self.card, text="Setup Wizard - Step 1", 
+                     font=("Segoe UI", 11), text_color="#757575").pack(pady=(0, 22))
 
-        # --- RIGHT SIDE: FORM ---
-        self.right_panel = ctk.CTkFrame(self.main_card, fg_color="white", corner_radius=20, width=600, height=600)
-        self.right_panel.place(x=400, y=0)
-        
-        self.form_container = ctk.CTkFrame(self.right_panel, fg_color="transparent")
-        self.form_container.place(relx=0.5, rely=0.5, anchor="center")
-
-        # Title
-        ctk.CTkLabel(self.form_container, text="Organization Details", 
-                     font=("Segoe UI", 24, "bold"), text_color="#333").pack(pady=(0, 20))
-
-        # Form Fields
+        # ── Form Fields ───────────────────────────────────────────────────
         self.fields = {}
         
-        self.create_field("Company Name", "company_name")
-        self.create_field("Address", "address")
+        # Company Name
+        comp_container = ctk.CTkFrame(self.card, fg_color="white",
+                                      border_color="#E0E0E0", border_width=1.5,
+                                      corner_radius=12, height=50, width=310)
+        comp_container.pack(pady=6)
+        comp_container.pack_propagate(False)
         
+        ctk.CTkLabel(comp_container, text="🏢", font=("Segoe UI", 15),
+                     text_color="#9E9E9E", fg_color="transparent").pack(side="left", padx=(14, 6))
+                     
+        self.fields["company_name"] = tk.Entry(comp_container, relief="flat", bd=0,
+                                   bg="white", fg="#333",
+                                   font=("Segoe UI", 13), insertbackground="#333")
+        self.fields["company_name"].pack(side="left", fill="x", expand=True, padx=(0, 14), pady=14)
+        
+        comp_ph = ctk.CTkLabel(comp_container, text="Company Name", font=("Segoe UI", 13),
+                               text_color="#BDBDBD", fg_color="transparent")
+        comp_ph.place(x=42, y=25, anchor="w")
+        comp_ph.bind("<Button-1>", lambda e: self.fields["company_name"].focus())
+
+        def _check_comp_ph(*_):
+            self.after(10, lambda: comp_ph.place_forget() if self.fields["company_name"].get()
+                       else comp_ph.place(x=42, y=25, anchor="w"))
+        self.fields["company_name"].bind("<KeyRelease>", _check_comp_ph)
+        self.fields["company_name"].bind("<FocusIn>",
+            lambda e: [comp_container.configure(border_color="#1A1A1A"), comp_ph.place_forget()])
+        self.fields["company_name"].bind("<FocusOut>",
+            lambda e: [comp_container.configure(border_color="#E0E0E0"), _check_comp_ph()])
+
+        # Address
+        addr_container = ctk.CTkFrame(self.card, fg_color="white",
+                                      border_color="#E0E0E0", border_width=1.5,
+                                      corner_radius=12, height=50, width=310)
+        addr_container.pack(pady=6)
+        addr_container.pack_propagate(False)
+        
+        ctk.CTkLabel(addr_container, text="📍", font=("Segoe UI", 15),
+                     text_color="#9E9E9E", fg_color="transparent").pack(side="left", padx=(14, 6))
+                     
+        self.fields["address"] = tk.Entry(addr_container, relief="flat", bd=0,
+                                   bg="white", fg="#333",
+                                   font=("Segoe UI", 13), insertbackground="#333")
+        self.fields["address"].pack(side="left", fill="x", expand=True, padx=(0, 14), pady=14)
+        
+        addr_ph = ctk.CTkLabel(addr_container, text="Address", font=("Segoe UI", 13),
+                               text_color="#BDBDBD", fg_color="transparent")
+        addr_ph.place(x=42, y=25, anchor="w")
+        addr_ph.bind("<Button-1>", lambda e: self.fields["address"].focus())
+
+        def _check_addr_ph(*_):
+            self.after(10, lambda: addr_ph.place_forget() if self.fields["address"].get()
+                       else addr_ph.place(x=42, y=25, anchor="w"))
+        self.fields["address"].bind("<KeyRelease>", _check_addr_ph)
+        self.fields["address"].bind("<FocusIn>",
+            lambda e: [addr_container.configure(border_color="#1A1A1A"), addr_ph.place_forget()])
+        self.fields["address"].bind("<FocusOut>",
+            lambda e: [addr_container.configure(border_color="#E0E0E0"), _check_addr_ph()])
+
         try:
             self.fields["company_name"].focus()
             self.fields["company_name"].bind("<Return>", lambda event: self.fields["address"].focus())
@@ -2366,30 +2385,22 @@ class OrganizationSetupPage(ctk.CTkFrame):
         except Exception as e:
             print(f"Error binding OrganizationSetupPage: {e}")
 
-        # Error Label
-        self.error_label = ctk.CTkLabel(self.form_container, text="", text_color="red", font=("Segoe UI", 11))
+        # ── Error Label ───────────────────────────────────────────────────
+        self.error_label = ctk.CTkLabel(self.card, text="", text_color="#757575", font=("Segoe UI", 11))
         self.error_label.pack(pady=(10, 5))
 
-        # Save Button
-        self.save_btn = ModernButton(self.form_container, text="Next: Admin Setup ➔", 
-                                      font=("Segoe UI", 13, "bold"),
-                                      height=45, width=250,
-                                      fg_color="#1976D2", hover_color="#1565C0",
-                                      corner_radius=8,
-                                      command=self.on_save)
-        self.save_btn.pack(pady=20)
+        # ── Save Button ───────────────────────────────────────────────────
+        self.save_btn = ModernButton(
+            self.card, text="NEXT ➔", 
+            font=("Segoe UI", 12, "bold"),
+            height=42, width=280,
+            fg_color="#1A1A1A", hover_color="#333333",
+            text_color="white", corner_radius=10,
+            command=self.on_save
+        )
+        self.save_btn.pack(pady=10)
 
-    def create_field(self, label_text, key):
-        frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
-        frame.pack(pady=10, fill="x")
-        
-        ctk.CTkLabel(frame, text=label_text, font=("Segoe UI", 11, "bold"), text_color="#555", anchor="w").pack(fill="x", pady=(0, 2))
-        
-        entry = ctk.CTkEntry(frame, height=40, width=320, font=("Segoe UI", 13), border_color="#E0E0E0", corner_radius=6)
-        entry.pack(fill="x")
-        
-        self.fields[key] = entry
-        
+
     def on_save(self):
         company = self.fields["company_name"].get().strip()
         address = self.fields["address"].get().strip()
@@ -2400,6 +2411,10 @@ class OrganizationSetupPage(ctk.CTkFrame):
 
         self.controller.show_admin_setup(company, address)
 
+    def go_back(self):
+        """Go back to the license verification page."""
+        self.controller.show_license_verification()
+
 
 class AdminSetupPage(ctk.CTkFrame):
     def __init__(self, parent, controller, company, address):
@@ -2408,84 +2423,108 @@ class AdminSetupPage(ctk.CTkFrame):
         self.company = company
         self.address = address
         
-        # Background
-        self.configure(fg_color="#F5F7FA")
-        
-        # Main Container
-        self.main_card = ctk.CTkFrame(self, fg_color="white", corner_radius=20, width=1000, height=600)
-        self.main_card.place(relx=0.5, rely=0.5, anchor="center")
-        self.main_card.pack_propagate(False)
+        # ── Background ────────────────────────────────────────────────────
+        self.configure(fg_color="#F0F2F5")
 
-        # --- LEFT SIDE: INFO PANEL ---
-        self.left_panel = ctk.CTkFrame(self.main_card, fg_color="#1565C0", corner_radius=20, width=400, height=600)
-        self.left_panel.place(x=0, y=0)
-        self.left_panel.pack_propagate(False)
+        # ── Shadow layer ──────────────────────────────────────────────────
+        self._shadow_canvas = tk.Canvas(self, bg="#F0F2F5", highlightthickness=0,
+                                        width=420, height=650)
+        self._shadow_canvas.place(relx=0.5, rely=0.5, anchor="center")
+
+        _shadow_colors = ["#CBCDD4", "#D3D5DC", "#DBDDE4", "#E3E5EB", "#EBECF0"]
+        for i, col in enumerate(_shadow_colors):
+            pad = i * 2
+            off = 5 - i
+            self._shadow_canvas.create_rectangle(
+                10 + pad + off, 12 + pad + off,
+                410 - pad + off, 642 - pad + off,
+                fill=col, outline="", tags="shadow"
+            )
+
+        # ── Main Card ─────────────────────────────────────────────────────
+        self.card = ctk.CTkFrame(
+            self, fg_color="white", corner_radius=28,
+            width=400, height=630
+        )
+        self.card.place(relx=0.5, rely=0.5, anchor="center")
+        self.card.pack_propagate(False)
+        self.card.lift()
+
+        # ── Back Button ───────────────────────────────────────────────────
+        self.back_btn = ModernButton(
+            self.card, text="⬅ Back",
+            font=("Segoe UI", 11, "bold"), height=28, width=70,
+            fg_color="#F0F4F0", hover_color="#E2E8E2", text_color="#1B5E20",
+            corner_radius=6, command=self.go_back
+        )
+        self.back_btn.place(x=15, y=15)
         
-        # Load cherry logo image
+        # ── Logo ──────────────────────────────────────────────────────────
         try:
             logo_path = resource_path("settings/cherry_signup_logo.png")
             if os.path.exists(logo_path):
                 pil_img = Image.open(logo_path)
-                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(180, 86))
-                logo_lbl = ctk.CTkLabel(self.left_panel, text="", image=self.cherry_logo_img, fg_color="transparent")
-                logo_lbl.place(relx=0.5, rely=0.15, anchor="center")
+                self.cherry_logo_img = ctk.CTkImage(pil_img, size=(200, 62))
+                logo_lbl = ctk.CTkLabel(self.card, text="", image=self.cherry_logo_img, fg_color="transparent")
+                logo_lbl.pack(pady=(38, 6))
         except Exception as e:
             print("Error loading setup cherry logo:", e)
         
-        ctk.CTkLabel(self.left_panel, text="Setup Wizard", 
-                     font=("Segoe UI", 24, "bold"), text_color="white").place(relx=0.5, rely=0.30, anchor="center")
+        # ── Title ─────────────────────────────────────────────────────────
+        ctk.CTkLabel(self.card, text="Admin Credentials", 
+                     font=("Segoe UI", 20, "bold"), text_color="#1A1A1A").pack(pady=(4, 2))
+        ctk.CTkLabel(self.card, text="Setup Wizard - Step 2", 
+                     font=("Segoe UI", 11), text_color="#757575").pack(pady=(0, 16))
+
+        # ── Form Fields ───────────────────────────────────────────────────
         
-        ctk.CTkLabel(self.left_panel, text="Step 2: Administrator", 
-                     font=("Segoe UI", 18, "bold"), text_color="#BBDEFB").place(relx=0.5, rely=0.38, anchor="center")
+        def _make_field(icon, ph_text, is_pass=False):
+            container = ctk.CTkFrame(self.card, fg_color="white",
+                                     border_color="#E0E0E0", border_width=1.5,
+                                     corner_radius=12, height=46, width=310)
+            container.pack(pady=4)
+            container.pack_propagate(False)
+            
+            ctk.CTkLabel(container, text=icon, font=("Segoe UI", 15),
+                         text_color="#9E9E9E", fg_color="transparent").pack(side="left", padx=(14, 6))
+                         
+            entry = tk.Entry(container, relief="flat", bd=0,
+                             bg="white", fg="#333",
+                             font=("Segoe UI", 13), insertbackground="#333",
+                             show="●" if is_pass else "")
+            entry.pack(side="left", fill="x", expand=True, padx=(0, 14), pady=12)
+            
+            ph = ctk.CTkLabel(container, text=ph_text, font=("Segoe UI", 13),
+                              text_color="#BDBDBD", fg_color="transparent")
+            ph.place(x=42, y=23, anchor="w")
+            ph.bind("<Button-1>", lambda e: entry.focus())
+
+            def _check_ph(*_):
+                self.after(10, lambda: ph.place_forget() if entry.get()
+                           else ph.place(x=42, y=23, anchor="w"))
+            entry.bind("<KeyRelease>", _check_ph)
+            entry.bind("<FocusIn>",
+                lambda e: [container.configure(border_color="#1A1A1A"), ph.place_forget()])
+            entry.bind("<FocusOut>",
+                lambda e: [container.configure(border_color="#E0E0E0"), _check_ph()])
+                
+            return entry, _check_ph
+
+        self.name_entry, _ = _make_field("👤", "Admin Name")
+        self.pass_entry, _ = _make_field("🔒", "Password", True)
+        self.confirm_entry, _ = _make_field("🔒", "Confirm Password", True)
         
-        info_text = ("Set up the primary admin account.\n\n"
-                     "This account will be used to access\n"
-                     "system settings and configurations.")
-        
-        ctk.CTkLabel(self.left_panel, text=info_text, 
-                     font=("Segoe UI", 13), text_color="#E3F2FD", justify="center").place(relx=0.5, rely=0.58, anchor="center")
-
-        # --- RIGHT SIDE: FORM ---
-        self.right_panel = ctk.CTkFrame(self.main_card, fg_color="white", corner_radius=20, width=600, height=600)
-        self.right_panel.place(x=400, y=0)
-        
-        self.form_container = ctk.CTkFrame(self.right_panel, fg_color="transparent")
-        self.form_container.place(relx=0.5, rely=0.5, anchor="center")
-
-        ctk.CTkLabel(self.form_container, text="Admin Credentials", 
-                     font=("Segoe UI", 24, "bold"), text_color="#333").pack(pady=(0, 10))
-
-        # Admin Name
-        name_frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
-        name_frame.pack(pady=5, fill="x")
-        ctk.CTkLabel(name_frame, text="Admin Name", font=("Segoe UI", 11, "bold"), text_color="#555", anchor="w").pack(fill="x", pady=(0, 2))
-        self.name_entry = ctk.CTkEntry(name_frame, height=40, width=320, font=("Segoe UI", 13), border_color="#E0E0E0", corner_radius=6)
-        self.name_entry.pack(fill="x")
-        self.name_entry.focus()
-
-        # Password
-        pass_frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
-        pass_frame.pack(pady=5, fill="x")
-        ctk.CTkLabel(pass_frame, text="Password", font=("Segoe UI", 11, "bold"), text_color="#555", anchor="w").pack(fill="x", pady=(0, 2))
-        self.pass_entry = ctk.CTkEntry(pass_frame, height=40, width=320, font=("Segoe UI", 13), show="●", border_color="#E0E0E0", corner_radius=6)
-        self.pass_entry.pack(fill="x")
-        self.pass_entry.bind("<KeyRelease>", self.validate_password)
-
-        # Confirm Password
-        confirm_frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
-        confirm_frame.pack(pady=5, fill="x")
-        ctk.CTkLabel(confirm_frame, text="Confirm Password", font=("Segoe UI", 11, "bold"), text_color="#555", anchor="w").pack(fill="x", pady=(0, 2))
-        self.confirm_entry = ctk.CTkEntry(confirm_frame, height=40, width=320, font=("Segoe UI", 13), show="●", border_color="#E0E0E0", corner_radius=6)
-        self.confirm_entry.pack(fill="x")
-        self.confirm_entry.bind("<KeyRelease>", self.validate_password)
+        # Rebind validations
+        self.pass_entry.bind("<KeyRelease>", self.validate_password, add="+")
+        self.confirm_entry.bind("<KeyRelease>", self.validate_password, add="+")
 
         self.name_entry.bind("<Return>", lambda event: self.pass_entry.focus())
         self.pass_entry.bind("<Return>", lambda event: self.confirm_entry.focus())
         self.confirm_entry.bind("<Return>", lambda event: self.save_btn.invoke() if self.save_btn.cget('state') == 'normal' else None)
 
-        # Password Rules Checklist
-        self.rules_frame = ctk.CTkFrame(self.form_container, fg_color="transparent")
-        self.rules_frame.pack(pady=5, fill="x")
+        # ── Password Rules Checklist ──────────────────────────────────────
+        self.rules_frame = ctk.CTkFrame(self.card, fg_color="transparent")
+        self.rules_frame.pack(pady=(6, 0))
         
         self.rule_labels = {}
         rules = [("upper", "One uppercase letter"), ("lower", "One lowercase letter"),
@@ -2493,23 +2532,24 @@ class AdminSetupPage(ctk.CTkFrame):
                  ("match", "Passwords match")]
         
         for key, text in rules:
-            lbl = ctk.CTkLabel(self.rules_frame, text="❌ " + text, font=("Segoe UI", 11), text_color="#757575", anchor="w")
-            lbl.pack(fill="x")
+            lbl = ctk.CTkLabel(self.rules_frame, text="❌ " + text, font=("Segoe UI", 10), text_color="#757575", anchor="w")
+            lbl.pack(fill="x", pady=0)
             self.rule_labels[key] = lbl
 
-        # Error
-        self.error_label = ctk.CTkLabel(self.form_container, text="", text_color="red", font=("Segoe UI", 11))
-        self.error_label.pack(pady=(5, 5))
+        # ── Error Label ───────────────────────────────────────────────────
+        self.error_label = ctk.CTkLabel(self.card, text="", text_color="#757575", font=("Segoe UI", 11))
+        self.error_label.pack(pady=(2, 2))
 
-        # Save
-        self.save_btn = ModernButton(self.form_container, text="Save & Launch", 
-                                      font=("Segoe UI", 13, "bold"),
-                                      height=45, width=250,
-                                      fg_color="#1976D2", hover_color="#1565C0",
-                                      state="disabled",
-                                      corner_radius=8,
-                                      command=self.on_save)
-        self.save_btn.pack(pady=10)
+        # ── Save Button ───────────────────────────────────────────────────
+        self.save_btn = ModernButton(
+            self.card, text="SAVE & LAUNCH ➔", 
+            font=("Segoe UI", 12, "bold"),
+            height=42, width=280,
+            fg_color="#1A1A1A", hover_color="#333333",
+            state="disabled", text_color="white", corner_radius=10,
+            command=self.on_save
+        )
+        self.save_btn.pack(pady=(0, 10))
 
     def validate_password(self, event=None):
         password = self.pass_entry.get()
@@ -2553,6 +2593,10 @@ class AdminSetupPage(ctk.CTkFrame):
             self.controller.complete_setup()
         except Exception as e:
             self.error_label.configure(text=f"Error saving: {e}")
+
+    def go_back(self):
+        """Go back to the organization setup page."""
+        self.controller.show_setup_wizard()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -2805,6 +2849,10 @@ class CherryApp(ctk.CTk):
 
     def show_installer_login(self):
         """Show the Installer Login Page (Hardcoded)."""
+        if hasattr(self, "license_verify"):
+            self.license_verify.pack_forget()
+            self.license_verify.destroy()
+            
         self.installer_login = InstallerLoginPage(self, self)
         self.installer_login.pack(fill="both", expand=True)
 
@@ -2813,6 +2861,9 @@ class CherryApp(ctk.CTk):
         if hasattr(self, "installer_login"):
             self.installer_login.pack_forget()
             self.installer_login.destroy()
+        if hasattr(self, "setup_page"):
+            self.setup_page.pack_forget()
+            self.setup_page.destroy()
         
         self.license_verify = LicenseVerificationPage(self, self)
         self.license_verify.pack(fill="both", expand=True)
@@ -2822,6 +2873,9 @@ class CherryApp(ctk.CTk):
         if hasattr(self, "license_verify"):
             self.license_verify.pack_forget()
             self.license_verify.destroy()
+        if hasattr(self, "admin_setup"):
+            self.admin_setup.pack_forget()
+            self.admin_setup.destroy()
         
         self.setup_page = OrganizationSetupPage(self, self)
         self.setup_page.pack(fill="both", expand=True)
